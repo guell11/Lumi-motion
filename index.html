@@ -1,0 +1,2328 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lumi Motion | Editor de Vídeo Motion Graphics</title>
+  <meta name="description" content="Lumi Motion é um editor desktop de vídeo e motion graphics feito em Python, PyQt6, HTML, CSS e JavaScript, com textos animados, vetores, keyframes, áudio, efeitos, câmera e exportação via FFmpeg." />
+
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"
+      }
+    }
+  </script>
+
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --bg: #05050a;
+      --bg-soft: #090914;
+      --panel: rgba(255, 255, 255, 0.075);
+      --panel-strong: rgba(255, 255, 255, 0.13);
+      --stroke: rgba(255, 255, 255, 0.16);
+      --text: #ffffff;
+      --muted: #bdbdd2;
+      --muted-2: #8989a3;
+      --pink: #ff3aa8;
+      --purple: #8b4dff;
+      --cyan: #00e7ff;
+      --blue: #2269ff;
+      --green: #71ffcb;
+      --yellow: #ffd76a;
+      --shadow: 0 30px 120px rgba(0, 0, 0, 0.55);
+      --mouse-x: 50%;
+      --mouse-y: 50%;
+      --max: min(1760px, 94vw);
+      --section-y: clamp(84px, 8vw, 150px);
+      --space-lg: clamp(28px, 3vw, 60px);
+      --space-xl: clamp(48px, 6vw, 110px);
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(circle 520px at var(--mouse-x) var(--mouse-y), rgba(0, 231, 255, 0.13), transparent 55%),
+        radial-gradient(circle 760px at 20% 10%, rgba(255, 58, 168, 0.18), transparent 45%),
+        radial-gradient(circle 720px at 85% 30%, rgba(139, 77, 255, 0.17), transparent 46%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.03), transparent 18%);
+      z-index: -8;
+    }
+
+    body::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.13;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+      background-size: clamp(52px, 4vw, 86px) clamp(52px, 4vw, 86px);
+      mask-image: radial-gradient(circle at var(--mouse-x) var(--mouse-y), black, transparent 72%);
+      z-index: -7;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    button {
+      font: inherit;
+    }
+
+    .noise {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.065;
+      z-index: 100;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 240 240' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    }
+
+    .orb {
+      position: fixed;
+      width: 260px;
+      height: 260px;
+      border-radius: 999px;
+      filter: blur(48px);
+      opacity: 0.35;
+      pointer-events: none;
+      z-index: -6;
+      transform: translate3d(0, 0, 0);
+      animation: drift 9s ease-in-out infinite alternate;
+    }
+
+    .orb.one {
+      top: 12%;
+      left: 7%;
+      background: var(--pink);
+    }
+
+    .orb.two {
+      top: 18%;
+      right: 8%;
+      background: var(--cyan);
+      animation-delay: -3s;
+    }
+
+    .orb.three {
+      bottom: 8%;
+      left: 42%;
+      background: var(--purple);
+      animation-delay: -5s;
+    }
+
+    .page {
+      width: 100%;
+      min-height: 100vh;
+    }
+
+    header {
+      width: var(--max);
+      margin: 0 auto;
+      padding: 24px 0;
+      position: sticky;
+      top: 0;
+      z-index: 40;
+    }
+
+    .glass-nav {
+      display: grid;
+      grid-template-columns: 250px 1fr 190px;
+      align-items: center;
+      gap: 22px;
+      padding: 14px 16px;
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 30px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.045));
+      backdrop-filter: blur(24px) saturate(150%);
+      -webkit-backdrop-filter: blur(24px) saturate(150%);
+      box-shadow: 0 20px 80px rgba(0,0,0,0.25), inset 0 1px rgba(255,255,255,0.26);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 950;
+      letter-spacing: 2px;
+      font-size: 1.1rem;
+    }
+
+    .logo-mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 16px;
+      position: relative;
+      background: linear-gradient(135deg, var(--pink), var(--purple) 52%, var(--cyan));
+      box-shadow: 0 0 36px rgba(139, 77, 255, 0.62), inset 0 2px rgba(255,255,255,0.48);
+      transform-style: preserve-3d;
+    }
+
+    .logo-mark::before {
+      content: "";
+      position: absolute;
+      inset: 12px 13px;
+      clip-path: polygon(0 0, 100% 50%, 0 100%);
+      background: white;
+      filter: drop-shadow(0 0 8px rgba(255,255,255,0.75));
+    }
+
+    nav {
+      justify-self: center;
+      display: flex;
+      gap: 8px;
+      padding: 6px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    nav a {
+      padding: 10px 14px;
+      border-radius: 999px;
+      color: #d8d8e9;
+      font-size: 0.9rem;
+      transition: 0.22s ease;
+      white-space: nowrap;
+    }
+
+    nav a:hover {
+      color: white;
+      background: rgba(255,255,255,0.11);
+    }
+
+    .nav-actions {
+      justify-self: end;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .download-button,
+    .ghost-button,
+    .mini-button {
+      position: relative;
+      border: 0;
+      border-radius: 999px;
+      font-weight: 950;
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      white-space: nowrap;
+    }
+
+    .download-button {
+      padding: 14px 22px;
+      color: white;
+      background: linear-gradient(135deg, var(--pink), var(--purple) 50%, var(--cyan));
+      box-shadow: 0 18px 58px rgba(139, 77, 255, 0.34), inset 0 1px rgba(255,255,255,0.4);
+    }
+
+    .ghost-button {
+      padding: 14px 21px;
+      color: #f4f4ff;
+      background: rgba(255,255,255,0.075);
+      border: 1px solid rgba(255,255,255,0.16);
+      backdrop-filter: blur(18px);
+    }
+
+    .mini-button {
+      padding: 10px 14px;
+      color: #e9e9ff;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      font-size: 0.86rem;
+    }
+
+    .download-button::after,
+    .ghost-button::after,
+    .mini-button::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(120deg, transparent, rgba(255,255,255,0.38), transparent);
+      transform: translateX(-120%);
+      transition: 0.6s ease;
+    }
+
+    .download-button:hover,
+    .ghost-button:hover,
+    .mini-button:hover {
+      transform: translateY(-3px);
+    }
+
+    .download-button:hover::after,
+    .ghost-button:hover::after,
+    .mini-button:hover::after {
+      transform: translateX(120%);
+    }
+
+    .hero {
+      width: var(--max);
+      min-height: calc(100vh - 112px);
+      margin: 0 auto;
+      padding: clamp(48px, 4.8vw, 92px) 0 clamp(80px, 6vw, 120px);
+      display: grid;
+      grid-template-columns: 0.72fr 1.28fr;
+      gap: clamp(44px, 4.5vw, 86px);
+      align-items: stretch;
+    }
+
+    .hero-copy {
+      align-self: center;
+      position: relative;
+      padding-top: 8px;
+      z-index: 2;
+    }
+
+    .badge {
+      width: fit-content;
+      padding: 10px 15px;
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      backdrop-filter: blur(18px);
+      color: #e2e2ff;
+      font-size: 0.9rem;
+      margin-bottom: 22px;
+      box-shadow: inset 0 1px rgba(255,255,255,0.2);
+    }
+
+    h1 {
+      font-size: clamp(3.8rem, 6.45vw, 8.7rem);
+      line-height: 0.84;
+      letter-spacing: clamp(-8px, -0.45vw, -3px);
+      max-width: 1040px;
+    }
+
+    .gradient-text {
+      background: linear-gradient(90deg, var(--pink), var(--purple), var(--cyan));
+      -webkit-background-clip: text;
+      color: transparent;
+      filter: drop-shadow(0 0 22px rgba(139,77,255,0.22));
+    }
+
+    .hero p {
+      margin-top: 28px;
+      color: var(--muted);
+      font-size: clamp(1.04rem, 1vw, 1.22rem);
+      line-height: 1.75;
+      max-width: 630px;
+    }
+
+    .hero-actions {
+      margin-top: 34px;
+      display: flex;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+
+    .download-note {
+      margin-top: 14px;
+      color: var(--muted-2);
+      font-size: 0.9rem;
+    }
+
+    .stats {
+      margin-top: 36px;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      max-width: 700px;
+    }
+
+    .stat {
+      padding: 18px;
+      border-radius: 22px;
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,0.11);
+      backdrop-filter: blur(20px);
+    }
+
+    .stat strong {
+      display: block;
+      font-size: 1.36rem;
+      margin-bottom: 5px;
+    }
+
+    .stat span {
+      color: #aaaac2;
+      font-size: 0.86rem;
+    }
+
+    .hero-visual {
+      min-height: clamp(640px, 44vw, 890px);
+      display: grid;
+      grid-template-columns: 1fr;
+      align-items: stretch;
+      position: relative;
+      perspective: 1300px;
+    }
+
+    #three-scene {
+      position: absolute;
+      inset: -46px -80px -40px -50px;
+      z-index: 0;
+      opacity: 0.96;
+      pointer-events: none;
+    }
+
+    .editor-shell {
+      position: relative;
+      z-index: 2;
+      align-self: center;
+      transform-style: preserve-3d;
+      transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+      transition: transform 0.08s linear;
+    }
+
+    .mockup {
+      min-height: clamp(640px, 42vw, 820px);
+      padding: 16px;
+      border-radius: 38px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.24), rgba(255,255,255,0.06));
+      border: 1px solid rgba(255,255,255,0.18);
+      backdrop-filter: blur(26px) saturate(145%);
+      -webkit-backdrop-filter: blur(26px) saturate(145%);
+      box-shadow: var(--shadow), inset 0 1px rgba(255,255,255,0.35);
+      overflow: hidden;
+    }
+
+    .editor-window {
+      height: 100%;
+      min-height: calc(clamp(640px, 42vw, 820px) - 32px);
+      border-radius: 28px;
+      overflow: hidden;
+      background: rgba(12, 12, 20, 0.78);
+      border: 1px solid rgba(255,255,255,0.15);
+      box-shadow: inset 0 1px rgba(255,255,255,0.1);
+    }
+
+    .topbar {
+      height: 54px;
+      background: rgba(255,255,255,0.055);
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 0 18px;
+    }
+
+    .dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: #ff4aac;
+    }
+
+    .dot:nth-child(2) {
+      background: #ffcf4a;
+    }
+
+    .dot:nth-child(3) {
+      background: #00e5ff;
+    }
+
+    .window-title {
+      margin-left: 14px;
+      color: #bebed2;
+      font-size: 0.86rem;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: 82px minmax(460px, 1fr) 280px;
+      height: calc(100% - 54px);
+    }
+
+    .tools,
+    .inspector {
+      background: rgba(0,0,0,0.22);
+      border-right: 1px solid rgba(255,255,255,0.08);
+      padding: 20px 14px;
+    }
+
+    .inspector {
+      border-right: 0;
+      border-left: 1px solid rgba(255,255,255,0.08);
+      padding: 20px;
+    }
+
+    .tool {
+      height: 46px;
+      border-radius: 15px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.08);
+      margin-bottom: 14px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .tool::after {
+      content: "";
+      position: absolute;
+      inset: 16px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--pink), var(--purple), var(--cyan));
+      opacity: 0.7;
+    }
+
+    .stage {
+      padding: 22px;
+      display: grid;
+      grid-template-rows: minmax(350px, 1fr) 170px;
+      gap: 20px;
+    }
+
+    .canvas {
+      border-radius: 26px;
+      background:
+        radial-gradient(circle at 28% 32%, rgba(255,58,168,0.34), transparent 34%),
+        radial-gradient(circle at 80% 18%, rgba(0,231,255,0.28), transparent 32%),
+        linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.025)),
+        #06060b;
+      display: grid;
+      place-items: center;
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.11);
+    }
+
+    .canvas::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(circle, black 18%, transparent 75%);
+    }
+
+    .css-banner {
+      position: absolute;
+      top: 34px;
+      left: 34px;
+      right: 34px;
+      height: 76px;
+      border-radius: 22px;
+      background:
+        linear-gradient(120deg, rgba(255,255,255,0.25), rgba(255,255,255,0.05)),
+        linear-gradient(90deg, rgba(255,58,168,0.22), rgba(0,231,255,0.18));
+      border: 1px solid rgba(255,255,255,0.18);
+      backdrop-filter: blur(18px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      box-shadow: inset 0 1px rgba(255,255,255,0.28);
+      animation: bannerFloat 4s ease-in-out infinite;
+    }
+
+    .css-banner span:first-child {
+      font-weight: 950;
+      letter-spacing: -0.5px;
+    }
+
+    .css-pill {
+      padding: 10px 13px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: #e5e5ff;
+      font-size: 0.84rem;
+    }
+
+    .animated-title {
+      position: relative;
+      z-index: 2;
+      font-size: clamp(3.4rem, 5.5vw, 6.7rem);
+      font-weight: 1000;
+      letter-spacing: -5px;
+      text-align: center;
+      line-height: 0.82;
+      animation: float 3s ease-in-out infinite;
+      text-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    }
+
+    .path {
+      position: absolute;
+      z-index: 1;
+      width: 430px;
+      height: 190px;
+      border: 2px dashed rgba(255,255,255,0.28);
+      border-radius: 50%;
+      transform: rotate(-12deg);
+      filter: drop-shadow(0 0 18px rgba(0,231,255,0.25));
+    }
+
+    .keypoint {
+      position: absolute;
+      z-index: 3;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 18px var(--cyan);
+      animation: pulse 2s infinite;
+    }
+
+    .keypoint.one {
+      top: 63%;
+      left: 30%;
+    }
+
+    .keypoint.two {
+      top: 37%;
+      right: 31%;
+      background: var(--pink);
+      box-shadow: 0 0 18px var(--pink);
+      animation-delay: -0.7s;
+    }
+
+    .keypoint.three {
+      top: 51%;
+      right: 20%;
+      background: var(--green);
+      box-shadow: 0 0 18px var(--green);
+      animation-delay: -1.3s;
+    }
+
+    .timeline {
+      border-radius: 22px;
+      background: rgba(255,255,255,0.065);
+      border: 1px solid rgba(255,255,255,0.1);
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 120px 1fr;
+      gap: 12px;
+      backdrop-filter: blur(18px);
+    }
+
+    .track-labels {
+      display: grid;
+      gap: 10px;
+      color: #9e9eb8;
+      font-size: 0.78rem;
+      align-content: center;
+    }
+
+    .tracks {
+      display: grid;
+      gap: 10px;
+      align-content: center;
+    }
+
+    .track {
+      height: 22px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .clip {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--pink), var(--purple), var(--cyan));
+      box-shadow: 0 0 20px rgba(139,77,255,0.35);
+      animation: clipGlow 3s ease-in-out infinite;
+    }
+
+    .clip.short {
+      width: 55%;
+    }
+
+    .clip.medium {
+      width: 72%;
+      margin-left: 14%;
+    }
+
+    .clip.long {
+      width: 90%;
+    }
+
+    .clip.tiny {
+      width: 38%;
+      margin-left: 48%;
+    }
+
+    .inspector h3 {
+      font-size: 0.95rem;
+      margin-bottom: 18px;
+      color: white;
+    }
+
+    .control {
+      margin-bottom: 18px;
+    }
+
+    .control label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: #b8b8cc;
+      margin-bottom: 8px;
+    }
+
+    .bar {
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.1);
+      overflow: hidden;
+    }
+
+    .bar span {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--pink), var(--cyan));
+    }
+
+    .wide-section,
+    .product-section,
+    .workflow,
+    .scroll-story {
+      width: var(--max);
+      margin: 0 auto;
+      padding: var(--space-xl) 0;
+    }
+
+    .section-head {
+      display: grid;
+      grid-template-columns: 0.92fr 1.08fr;
+      align-items: end;
+      gap: 48px;
+      margin-bottom: var(--space-lg);
+    }
+
+    .section-kicker {
+      color: var(--cyan);
+      font-weight: 900;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      font-size: 0.78rem;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: clamp(2.7rem, 4.55vw, 6.2rem);
+      letter-spacing: clamp(-5px, -0.3vw, -2px);
+      line-height: 0.9;
+    }
+
+    .section-subtitle {
+      color: var(--muted);
+      font-size: clamp(1rem, 0.95vw, 1.16rem);
+      line-height: 1.8;
+      max-width: 860px;
+    }
+
+    .product-section {
+      display: grid;
+      grid-template-columns: 0.9fr 1.1fr;
+      gap: 28px;
+      align-items: stretch;
+    }
+
+    .product-copy {
+      padding: clamp(36px, 4vw, 74px);
+      border-radius: 42px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.14), rgba(255,255,255,0.045));
+      border: 1px solid rgba(255,255,255,0.14);
+      backdrop-filter: blur(26px);
+    }
+
+    .product-copy h2 {
+      font-size: clamp(2.5rem, 4.4vw, 6rem);
+      line-height: 0.9;
+      letter-spacing: -4px;
+      margin-bottom: 26px;
+    }
+
+    .product-copy p {
+      color: var(--muted);
+      line-height: 1.8;
+      font-size: 1.06rem;
+      margin-bottom: 26px;
+    }
+
+    .feature-list {
+      display: grid;
+      gap: 14px;
+      margin-top: 30px;
+    }
+
+    .feature-line {
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      gap: 14px;
+      align-items: start;
+      color: #d8d8ee;
+    }
+
+    .check {
+      width: 30px;
+      height: 30px;
+      border-radius: 11px;
+      display: grid;
+      place-items: center;
+      background: rgba(113,255,203,0.15);
+      color: var(--green);
+      border: 1px solid rgba(113,255,203,0.3);
+      font-size: 0.8rem;
+    }
+
+    .deep-panel {
+      border-radius: 42px;
+      min-height: 680px;
+      background:
+        radial-gradient(circle at 30% 20%, rgba(0,231,255,0.2), transparent 30%),
+        radial-gradient(circle at 70% 75%, rgba(255,58,168,0.18), transparent 35%),
+        rgba(255,255,255,0.055);
+      border: 1px solid rgba(255,255,255,0.13);
+      overflow: hidden;
+      position: relative;
+      backdrop-filter: blur(24px);
+    }
+
+    #feature-3d-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0.95;
+    }
+
+    .floating-label {
+      position: absolute;
+      padding: 13px 16px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.16);
+      backdrop-filter: blur(18px);
+      color: #f2f2ff;
+      font-weight: 800;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.24);
+      font-size: 0.9rem;
+    }
+
+    .floating-label.one {
+      top: 46px;
+      left: 40px;
+    }
+
+    .floating-label.two {
+      right: 44px;
+      top: 48%;
+    }
+
+    .floating-label.three {
+      left: 54px;
+      bottom: 52px;
+    }
+
+    .bento-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 22px;
+    }
+
+    .bento-item {
+      min-height: 250px;
+      border-radius: 34px;
+      padding: clamp(26px, 2vw, 38px);
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.14), rgba(255,255,255,0.04)),
+        rgba(255,255,255,0.045);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(24px);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .bento-item::after {
+      content: "";
+      position: absolute;
+      width: 180px;
+      height: 180px;
+      border-radius: 60px;
+      right: -70px;
+      bottom: -78px;
+      background: linear-gradient(135deg, var(--pink), var(--purple), var(--cyan));
+      opacity: 0.22;
+      transform: rotate(18deg);
+    }
+
+    .bento-item.large {
+      grid-column: span 2;
+      grid-row: span 2;
+      min-height: 522px;
+    }
+
+    .bento-item.wide {
+      grid-column: span 2;
+    }
+
+    .card-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      margin-bottom: 22px;
+      background: linear-gradient(135deg, var(--pink), var(--purple), var(--cyan));
+      box-shadow: 0 18px 42px rgba(139,77,255,0.26), inset 0 1px rgba(255,255,255,0.38);
+      font-weight: 950;
+      font-size: 0.9rem;
+      position: relative;
+      z-index: 1;
+    }
+
+    .bento-item h3,
+    .bento-item p {
+      position: relative;
+      z-index: 1;
+    }
+
+    .bento-item h3 {
+      font-size: clamp(1.45rem, 1.5vw, 2rem);
+      letter-spacing: -1px;
+      margin-bottom: 14px;
+    }
+
+    .bento-item p {
+      color: #cfcfe4;
+      line-height: 1.8;
+      max-width: 560px;
+    }
+
+    .scroll-story {
+      padding-top: var(--space-xl);
+    }
+
+    .story-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 18px;
+      margin-top: 44px;
+    }
+
+    .story-card {
+      min-height: 360px;
+      padding: 30px;
+      border-radius: 34px;
+      background: rgba(255,255,255,0.065);
+      border: 1px solid rgba(255,255,255,0.13);
+      backdrop-filter: blur(22px);
+      position: relative;
+      overflow: hidden;
+      transform: translateY(30px);
+      opacity: 0;
+      transition: 0.8s ease;
+    }
+
+    .story-card.visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .story-card::after {
+      content: "";
+      position: absolute;
+      width: 170px;
+      height: 170px;
+      border-radius: 55px;
+      right: -72px;
+      bottom: -82px;
+      background: linear-gradient(135deg, var(--pink), var(--purple), var(--cyan));
+      opacity: 0.24;
+      transform: rotate(24deg);
+    }
+
+    .story-card small {
+      color: var(--cyan);
+      font-weight: 950;
+      letter-spacing: 1px;
+    }
+
+    .story-card h3 {
+      margin: 18px 0 12px;
+      font-size: 1.55rem;
+      letter-spacing: -1px;
+    }
+
+    .story-card p {
+      color: #cfcfe4;
+      line-height: 1.72;
+      position: relative;
+      z-index: 1;
+    }
+
+    .banner-lane {
+      margin-top: 22px;
+      display: grid;
+      grid-template-columns: 1fr 1.2fr 0.8fr;
+      gap: 22px;
+    }
+
+    .banner-lane.two {
+      grid-template-columns: 0.9fr 0.9fr 1.2fr;
+      margin-top: 22px;
+    }
+
+    .css-only-banner {
+      min-height: 230px;
+      border-radius: 32px;
+      padding: 32px;
+      background: conic-gradient(from 180deg at 50% 50%, rgba(255,58,168,0.24), rgba(0,231,255,0.19), rgba(139,77,255,0.24), rgba(255,58,168,0.24));
+      border: 1px solid rgba(255,255,255,0.16);
+      position: relative;
+      overflow: hidden;
+      box-shadow: inset 0 1px rgba(255,255,255,0.24);
+      transform: translateY(32px);
+      opacity: 0;
+      transition: 0.85s ease;
+    }
+
+    .css-only-banner.visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .css-only-banner::before {
+      content: "";
+      position: absolute;
+      inset: 1px;
+      border-radius: 31px;
+      background: rgba(7, 7, 12, 0.70);
+      backdrop-filter: blur(20px);
+    }
+
+    .css-only-banner::after {
+      content: "";
+      position: absolute;
+      width: 122px;
+      height: 122px;
+      right: 24px;
+      bottom: -42px;
+      border-radius: 38px;
+      background: linear-gradient(135deg, var(--pink), var(--purple), var(--cyan));
+      transform: rotate(18deg);
+      box-shadow: 0 0 55px rgba(0,231,255,0.30);
+      animation: cubeDance 5s ease-in-out infinite;
+      opacity: 0.8;
+    }
+
+    .css-only-banner h3,
+    .css-only-banner p,
+    .css-only-banner .mini-button {
+      position: relative;
+      z-index: 2;
+    }
+
+    .css-only-banner h3 {
+      font-size: 1.65rem;
+      margin-bottom: 10px;
+    }
+
+    .css-only-banner p {
+      color: #cfcfe4;
+      max-width: 520px;
+      line-height: 1.7;
+      margin-bottom: 20px;
+    }
+
+    .showcase-strip {
+      width: 100%;
+      padding: 28px 0 var(--space-xl);
+      overflow: hidden;
+    }
+
+    .marquee {
+      display: flex;
+      width: max-content;
+      gap: 20px;
+      animation: marquee 30s linear infinite;
+    }
+
+    .preset-tile {
+      width: clamp(220px, 14vw, 310px);
+      height: 172px;
+      border-radius: 30px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      font-weight: 950;
+      font-size: 1.24rem;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.04)),
+        rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(22px);
+      box-shadow: 0 20px 70px rgba(0,0,0,0.22);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .preset-tile::before {
+      content: "ABC";
+      position: absolute;
+      font-size: 3.4rem;
+      letter-spacing: -5px;
+      background: linear-gradient(90deg, var(--pink), var(--purple), var(--cyan));
+      -webkit-background-clip: text;
+      color: transparent;
+      opacity: 0.18;
+      transform: translateY(-24px) rotate(-6deg);
+    }
+
+    .preset-tile span {
+      position: relative;
+      z-index: 1;
+      transform: translateY(34px);
+      color: #f3f3ff;
+    }
+
+    .workflow-grid {
+      margin-top: 44px;
+      display: grid;
+      grid-template-columns: 1.05fr 0.95fr;
+      gap: 26px;
+    }
+
+    .workflow-panel {
+      min-height: 560px;
+      border-radius: 40px;
+      padding: 34px;
+      background: rgba(255,255,255,0.065);
+      border: 1px solid rgba(255,255,255,0.13);
+      backdrop-filter: blur(24px);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .curve-editor {
+      margin-top: 34px;
+      height: 340px;
+      border-radius: 28px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.09), rgba(255,255,255,0.03));
+      border: 1px solid rgba(255,255,255,0.12);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .curve-editor::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(255,255,255,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.06) 1px, transparent 1px);
+      background-size: 38px 38px;
+    }
+
+    .curve-line {
+      position: absolute;
+      left: 54px;
+      right: 54px;
+      top: 62%;
+      height: 4px;
+      background: linear-gradient(90deg, var(--pink), var(--purple), var(--cyan));
+      border-radius: 999px;
+      transform: rotate(-16deg);
+      box-shadow: 0 0 24px rgba(0,231,255,0.32);
+    }
+
+    .curve-dot {
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: white;
+      box-shadow: 0 0 18px rgba(255,255,255,0.7);
+    }
+
+    .curve-dot.a {
+      left: 48px;
+      top: 66%;
+    }
+
+    .curve-dot.b {
+      left: 38%;
+      top: 46%;
+      background: var(--pink);
+    }
+
+    .curve-dot.c {
+      right: 58px;
+      top: 28%;
+      background: var(--cyan);
+    }
+
+    .workflow-panel h3 {
+      font-size: 2rem;
+      letter-spacing: -1px;
+      margin-bottom: 14px;
+    }
+
+    .workflow-panel p {
+      color: var(--muted);
+      line-height: 1.75;
+    }
+
+    .download-section {
+      width: var(--max);
+      margin: 0 auto 80px;
+      padding: clamp(46px, 5vw, 78px);
+      border-radius: 46px;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(255,58,168,0.28), transparent 34%),
+        radial-gradient(circle at 80% 40%, rgba(0,231,255,0.22), transparent 34%),
+        linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.04));
+      border: 1px solid rgba(255,255,255,0.17);
+      backdrop-filter: blur(28px) saturate(140%);
+      box-shadow: var(--shadow), inset 0 1px rgba(255,255,255,0.3);
+      overflow: hidden;
+      position: relative;
+      display: grid;
+      grid-template-columns: 1fr 0.9fr;
+      gap: 36px;
+      align-items: center;
+    }
+
+    .download-section h2 {
+      font-size: clamp(3rem, 5vw, 6.4rem);
+      line-height: 0.88;
+      letter-spacing: -5px;
+      margin-bottom: 26px;
+    }
+
+    .download-section p {
+      color: #d5d5e8;
+      font-size: 1.12rem;
+      line-height: 1.75;
+      max-width: 780px;
+      margin-bottom: 30px;
+    }
+
+    .download-box {
+      padding: 30px;
+      border-radius: 32px;
+      background: rgba(0,0,0,0.24);
+      border: 1px solid rgba(255,255,255,0.14);
+      backdrop-filter: blur(22px);
+    }
+
+    .download-option {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 20px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .download-option:last-child {
+      border-bottom: 0;
+    }
+
+    .download-option strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .download-option span {
+      color: var(--muted-2);
+      font-size: 0.9rem;
+    }
+
+    footer {
+      width: var(--max);
+      margin: 0 auto;
+      padding: 34px 0 50px;
+      color: #8f8fa4;
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .reveal {
+      transform: translateY(34px);
+      opacity: 0;
+      transition: 0.85s ease;
+    }
+
+    .reveal.visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .parallax-soft {
+      transform: translateY(var(--scroll-shift, 0px));
+    }
+
+    @keyframes drift {
+      from {
+        transform: translate3d(-12px, -10px, 0) scale(1);
+      }
+      to {
+        transform: translate3d(22px, 18px, 0) scale(1.12);
+      }
+    }
+
+    @keyframes float {
+      0%, 100% {
+        transform: translateY(0) scale(1);
+      }
+      50% {
+        transform: translateY(-16px) scale(1.035);
+      }
+    }
+
+    @keyframes pulse {
+      0%, 100% {
+        transform: scale(1);
+        opacity: 0.86;
+      }
+      50% {
+        transform: scale(1.5);
+        opacity: 1;
+      }
+    }
+
+    @keyframes bannerFloat {
+      0%, 100% {
+        transform: translateY(0);
+      }
+      50% {
+        transform: translateY(10px);
+      }
+    }
+
+    @keyframes clipGlow {
+      0%, 100% {
+        filter: brightness(1);
+      }
+      50% {
+        filter: brightness(1.35);
+      }
+    }
+
+    @keyframes cubeDance {
+      0%, 100% {
+        transform: translateY(0) rotate(18deg) scale(1);
+      }
+      50% {
+        transform: translateY(-18px) rotate(30deg) scale(1.08);
+      }
+    }
+
+    @keyframes marquee {
+      from {
+        transform: translateX(0);
+      }
+      to {
+        transform: translateX(-50%);
+      }
+    }
+
+    @media (min-width: 2200px) {
+      :root {
+        --max: min(2300px, 92vw);
+      }
+
+      body {
+        font-size: 18px;
+      }
+
+      .hero {
+        grid-template-columns: 0.68fr 1.32fr;
+      }
+
+      .mockup {
+        min-height: 920px;
+      }
+
+      .editor-window {
+        min-height: 888px;
+      }
+
+      .deep-panel {
+        min-height: 820px;
+      }
+
+      .bento-item {
+        min-height: 320px;
+      }
+
+      .bento-item.large {
+        min-height: 662px;
+      }
+    }
+
+    @media (min-width: 1600px) and (max-width: 2199px) {
+      :root {
+        --max: min(1760px, 94vw);
+      }
+
+      .mockup {
+        min-height: 780px;
+      }
+
+      .editor-window {
+        min-height: 748px;
+      }
+    }
+
+    @media (min-width: 1180px) and (max-width: 1599px) {
+      :root {
+        --max: min(1400px, 94vw);
+      }
+
+      .glass-nav {
+        grid-template-columns: 220px 1fr 190px;
+      }
+
+      nav a {
+        padding-inline: 11px;
+      }
+
+      .hero {
+        grid-template-columns: 0.78fr 1.22fr;
+      }
+
+      .workspace {
+        grid-template-columns: 72px minmax(420px, 1fr) 235px;
+      }
+
+      .mockup {
+        min-height: 690px;
+      }
+
+      .editor-window {
+        min-height: 658px;
+      }
+    }
+
+    @media (max-width: 1179px) {
+      .glass-nav {
+        grid-template-columns: 1fr auto;
+      }
+
+      nav {
+        display: none;
+      }
+
+      .nav-actions .ghost-button {
+        display: none;
+      }
+
+      .hero,
+      .product-section,
+      .banner-lane,
+      .banner-lane.two,
+      .download-section,
+      .section-head,
+      .workflow-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-visual {
+        min-height: 620px;
+      }
+
+      .workspace {
+        grid-template-columns: 72px 1fr;
+      }
+
+      .inspector {
+        display: none;
+      }
+
+      .story-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .bento-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
+      .bento-item.large {
+        grid-column: span 2;
+        grid-row: span 1;
+        min-height: 340px;
+      }
+
+      .bento-item.wide {
+        grid-column: span 2;
+      }
+    }
+
+    @media (max-width: 780px) {
+      :root {
+        --max: min(100% - 28px, 720px);
+        --section-y: 78px;
+      }
+
+      header {
+        padding-top: 14px;
+      }
+
+      .glass-nav {
+        border-radius: 24px;
+        padding: 12px;
+      }
+
+      .logo {
+        font-size: 0.95rem;
+        letter-spacing: 1px;
+      }
+
+      .logo-mark {
+        width: 40px;
+        height: 40px;
+      }
+
+      .download-button {
+        padding: 12px 15px;
+        font-size: 0.88rem;
+      }
+
+      h1,
+      .section-title,
+      .download-section h2,
+      .product-copy h2 {
+        letter-spacing: -3px;
+      }
+
+      .hero {
+        padding-top: 20px;
+      }
+
+      .hero-visual {
+        min-height: 540px;
+      }
+
+      .mockup,
+      .editor-window {
+        min-height: 510px;
+      }
+
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+
+      .tools {
+        display: none;
+      }
+
+      .stage {
+        grid-template-rows: 1fr 150px;
+        padding: 14px;
+      }
+
+      .animated-title {
+        font-size: 3rem;
+        letter-spacing: -2px;
+      }
+
+      .css-banner {
+        left: 16px;
+        right: 16px;
+        top: 16px;
+        height: 64px;
+        padding: 0 14px;
+      }
+
+      .path {
+        width: 280px;
+        height: 130px;
+      }
+
+      .stats,
+      .story-grid,
+      .bento-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .bento-item.large,
+      .bento-item.wide {
+        grid-column: span 1;
+        grid-row: span 1;
+      }
+
+      .card-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 12px;
+      }
+
+      .product-copy,
+      .download-section {
+        padding: 30px 22px;
+        border-radius: 32px;
+      }
+
+      .deep-panel {
+        min-height: 480px;
+      }
+
+      .download-option {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .window-title {
+        display: none;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.001ms !important;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="noise"></div>
+  <div class="orb one"></div>
+  <div class="orb two"></div>
+  <div class="orb three"></div>
+
+  <div class="page">
+    <header>
+      <div class="glass-nav">
+        <a href="#" class="logo">
+          <span class="logo-mark"></span>
+          LUMI MOTION
+        </a>
+
+        <nav>
+          <a href="#produto">Produto</a>
+          <a href="#recursos">Recursos</a>
+          <a href="#motion">Motion</a>
+          <a href="#workflow">Workflow</a>
+          <a href="https://github.com/guell11/Lumi-motion/tree/main" target="_blank" rel="noopener">Download</a>
+        </nav>
+
+        <div class="nav-actions">
+          <a href="https://github.com/guell11/Lumi-motion/tree/main" target="_blank" rel="noopener" class="download-button">⬇ Download</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-copy reveal">
+          <div class="badge">Editor desktop • Motion graphics • Textos animados • 3D</div>
+
+          <h1>Edite vídeos com <span class="gradient-text">motion de verdade.</span></h1>
+
+          <p>
+            Lumi Motion é um editor de vídeo para criadores que querem animar textos, vetores, banners,
+            objetos 2.5D e cenas com keyframes visuais sem cair no pântano profissional onde todo botão
+            parece uma ameaça jurídica.
+          </p>
+
+          <div class="hero-actions">
+            <a href="https://github.com/guell11/Lumi-motion/tree/main" target="_blank" rel="noopener" class="download-button">⬇ Baixar Lumi Motion</a>
+            <a href="#produto" class="ghost-button">Conhecer o projeto</a>
+          </div>
+
+          <div class="download-note">Projeto em Python • Windows, Linux e macOS via repositório GitHub</div>
+
+          <div class="stats">
+            <div class="stat">
+              <strong>Keyframes</strong>
+              <span>arraste e anime</span>
+            </div>
+            <div class="stat">
+              <strong>3D</strong>
+              <span>Three.js e 2.5D</span>
+            </div>
+            <div class="stat">
+              <strong>Python</strong>
+              <span>PyQt6 + Web UI</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-visual parallax-soft">
+          <canvas id="three-scene"></canvas>
+
+          <div class="editor-shell" id="tilt-shell">
+            <div class="mockup">
+              <div class="editor-window">
+                <div class="topbar">
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span class="dot"></span>
+                  <span class="window-title">Lumi Motion Project • Textos + vetores + paths + 3D</span>
+                </div>
+
+                <div class="workspace">
+                  <div class="tools">
+                    <div class="tool"></div>
+                    <div class="tool"></div>
+                    <div class="tool"></div>
+                    <div class="tool"></div>
+                    <div class="tool"></div>
+                  </div>
+
+                  <div class="stage">
+                    <div class="canvas">
+                      <div class="css-banner">
+                        <span>Intro animada em 12s</span>
+                        <span class="css-pill">Motion Path</span>
+                      </div>
+
+                      <div class="path"></div>
+                      <span class="keypoint one"></span>
+                      <span class="keypoint two"></span>
+                      <span class="keypoint three"></span>
+
+                      <div class="animated-title">
+                        <span class="gradient-text">Anime</span><br />
+                        tudo
+                      </div>
+                    </div>
+
+                    <div class="timeline">
+                      <div class="track-labels">
+                        <span>Texto</span>
+                        <span>Vetor</span>
+                        <span>Banner</span>
+                        <span>3D</span>
+                      </div>
+
+                      <div class="tracks">
+                        <div class="track"><div class="clip long"></div></div>
+                        <div class="track"><div class="clip medium"></div></div>
+                        <div class="track"><div class="clip short"></div></div>
+                        <div class="track"><div class="clip tiny"></div></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <aside class="inspector">
+                    <h3>Propriedades</h3>
+
+                    <div class="control">
+                      <label><span>Glow</span><span>82%</span></label>
+                      <div class="bar"><span style="width:82%"></span></div>
+                    </div>
+
+                    <div class="control">
+                      <label><span>Blur</span><span>34%</span></label>
+                      <div class="bar"><span style="width:34%"></span></div>
+                    </div>
+
+                    <div class="control">
+                      <label><span>Depth</span><span>67%</span></label>
+                      <div class="bar"><span style="width:67%"></span></div>
+                    </div>
+
+                    <div class="control">
+                      <label><span>Easing</span><span>91%</span></label>
+                      <div class="bar"><span style="width:91%"></span></div>
+                    </div>
+                  </aside>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="produto" class="product-section">
+        <div class="product-copy reveal">
+          <div class="section-kicker">Sobre o projeto</div>
+          <h2>Um editor para criar, não para sobreviver.</h2>
+
+          <p>
+            O objetivo do Lumi Motion é juntar a facilidade de apps modernos com recursos reais de motion graphics:
+            texto por letra, vetores animáveis, templates, keyframes, motion path editável, exportação com FFmpeg, áudio, câmera global, texto 3D com Three.js local
+            e uma base desktop feita em PyQt6 com QWebEngineView e QWebChannel.
+          </p>
+
+          <p>
+            Ele não tenta substituir um estúdio inteiro. Ele tenta resolver o problema mais comum: criar vídeos
+            bonitos, rápidos, com animação personalizada e uma interface que não parece feita por um comitê de sofrimento.
+          </p>
+
+          <div class="feature-list">
+            <div class="feature-line">
+              <span class="check">✓</span>
+              <span>Timeline com múltiplas camadas para vídeo, imagem, texto 2D/3D, áudio, GIF, SVG, fontes e stickers.</span>
+            </div>
+
+            <div class="feature-line">
+              <span class="check">✓</span>
+              <span>Canvas interativo com seleção, resize, grid, snap, edição direta de texto e caminho de movimento.</span>
+            </div>
+
+            <div class="feature-line">
+              <span class="check">✓</span>
+              <span>Keyframes, presets de texto, modelos prontos, câmera, efeitos, filtros, áudio e exportação MP4/GIF/PNG.</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="deep-panel reveal">
+          <canvas id="feature-3d-canvas"></canvas>
+          <div class="floating-label one">Modelos 3D decorativos</div>
+          <div class="floating-label two">Vetores animáveis</div>
+          <div class="floating-label three">Export MP4 • GIF • PNG</div>
+        </div>
+      </section>
+
+      <section id="recursos" class="wide-section">
+        <div class="section-head reveal">
+          <div>
+            <div class="section-kicker">Recursos principais</div>
+            <h2 class="section-title">Tudo que o editor precisa para motion.</h2>
+          </div>
+
+          <p class="section-subtitle">
+            Texto, vetor, path, easing, templates, camadas e exportação. O pacote completo para vídeos curtos,
+            intros, reels, anúncios, aulas, banners animados e projetos com identidade visual.
+          </p>
+        </div>
+
+        <div class="bento-grid">
+          <article class="bento-item large reveal">
+            <div>
+              <div class="card-icon">T</div>
+              <h3>Texto animado avançado</h3>
+              <p>
+                Presets por letra, palavra e bloco: teclado, subir, deslocar, mesclar, explosão, rolar, skate,
+                neon, pulsar e glitch. O foco do Lumi Motion é fazer texto parecer vivo sem exigir pós-graduação
+                em After Effects.
+              </p>
+            </div>
+          </article>
+
+          <article class="bento-item reveal">
+            <div>
+              <div class="card-icon">⌁</div>
+              <h3>Motion path</h3>
+              <p>Linhas com pontos modeláveis, curvas Bézier e handles visuais.</p>
+            </div>
+          </article>
+
+          <article class="bento-item reveal">
+            <div>
+              <div class="card-icon">3D</div>
+              <h3>3D e 2.5D</h3>
+              <p>Profundidade, parallax, rotação em X/Y/Z e integração futura com GLB/GLTF.</p>
+            </div>
+          </article>
+
+          <article class="bento-item wide reveal">
+            <div>
+              <div class="card-icon">◆</div>
+              <h3>Vetores, shapes e SVG</h3>
+              <p>
+                Crie círculos, linhas, setas, cards, máscaras, SVGs e formas com fill, stroke, sombra,
+                blur e gradiente. Tudo animável por keyframe.
+              </p>
+            </div>
+          </article>
+
+          <article class="bento-item reveal">
+            <div>
+              <div class="card-icon">↯</div>
+              <h3>Efeitos e filtros</h3>
+              <p>Blur, glow, glitch, RGB split, grain, vinheta, brilho, contraste, saturação, temperatura e filtros prontos.</p>
+            </div>
+          </article>
+
+          <article class="bento-item reveal">
+            <div>
+              <div class="card-icon">♫</div>
+              <h3>Áudio</h3>
+              <p>Waveform, volume, fade, cortes e marcadores de beat.</p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="scroll-story">
+        <div class="section-head reveal">
+          <div>
+            <div class="section-kicker">Como funciona</div>
+            <h2 class="section-title">Do arraste ao vídeo final.</h2>
+          </div>
+
+          <p class="section-subtitle">
+            O fluxo é direto: você cria elementos, anima no canvas, ajusta no graph editor,
+            salva como preset e exporta. Revolucionário? Não. Útil? Milagrosamente, sim.
+          </p>
+        </div>
+
+        <div class="story-grid">
+          <article class="story-card">
+            <small>01</small>
+            <h3>Importe mídia</h3>
+            <p>Adicione vídeos, imagens, SVGs, áudios, fontes, ícones e modelos 3D. Tudo entra como layer na timeline.</p>
+          </article>
+
+          <article class="story-card">
+            <small>02</small>
+            <h3>Anime no canvas</h3>
+            <p>Arraste um texto ou vetor pela tela e o Lumi Motion cria keyframes de posição, escala e rotação automaticamente.</p>
+          </article>
+
+          <article class="story-card">
+            <small>03</small>
+            <h3>Edite o caminho</h3>
+            <p>Transforme a animação em uma linha cheia de pontos. Mova, curve, suavize e controle a trajetória.</p>
+          </article>
+
+          <article class="story-card">
+            <small>04</small>
+            <h3>Exporte</h3>
+            <p>Renderize em MP4, GIF ou sequência PNG usando FFmpeg, com presets de qualidade para redes sociais.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="motion" class="wide-section">
+        <div class="section-head reveal">
+          <div>
+            <div class="section-kicker">Recursos do editor</div>
+            <h2 class="section-title">Interface do editor, recursos e exportação.</h2>
+          </div>
+
+          <p class="section-subtitle">
+            Áreas que explicam o editor: composição visual, motion, textos animados, vetores, áudio, câmera, timeline, templates e exportação. O foco é o Lumi Motion, não os enfeites da página.
+          </p>
+        </div>
+
+        <div class="banner-lane">
+          <div class="css-only-banner">
+            <h3>Templates de vídeo</h3>
+            <p>Intros, chamadas, lower thirds, legendas animadas, títulos de reels e banners promocionais.</p>
+            <a class="mini-button" href="https://github.com/guell11/Lumi-motion/tree/main" target="_blank" rel="noopener">Baixar beta</a>
+          </div>
+
+          <div class="css-only-banner">
+            <h3>Editor de vetores</h3>
+            <p>Crie círculos, linhas, setas, cards, máscaras, SVGs e formas com propriedades animáveis.</p>
+            <a class="mini-button" href="#workflow">Ver workflow</a>
+          </div>
+
+          <div class="css-only-banner">
+            <h3>Texto vivo</h3>
+            <p>Controle entrada, saída, loop, atraso por caractere, velocidade e easing com presets editáveis.</p>
+            <a class="mini-button" href="https://github.com/guell11/Lumi-motion/tree/main" target="_blank" rel="noopener">Download</a>
+          </div>
+        </div>
+
+        <div class="banner-lane two">
+          <div class="css-only-banner">
+            <h3>Áudio e beat</h3>
+            <p>Waveform, fade, volume, cortes e marcadores para sincronizar texto com batidas.</p>
+          </div>
+
+          <div class="css-only-banner">
+            <h3>Camadas</h3>
+            <p>Bloqueie, agrupe, renomeie, ordene e aplique efeitos por layer, como uma pessoa civilizada faria.</p>
+          </div>
+
+          <div class="css-only-banner">
+            <h3>Exportação limpa</h3>
+            <p>MP4 para vídeos, GIF para loops, PNG para frames e presets para 1080p, vertical, quadrado e widescreen.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="showcase-strip" id="presets">
+        <div class="marquee">
+          <div class="preset-tile"><span>Teclado</span></div>
+          <div class="preset-tile"><span>Subir</span></div>
+          <div class="preset-tile"><span>Deslocar</span></div>
+          <div class="preset-tile"><span>Mesclar</span></div>
+          <div class="preset-tile"><span>Explosão</span></div>
+          <div class="preset-tile"><span>Rolar</span></div>
+          <div class="preset-tile"><span>Skate</span></div>
+          <div class="preset-tile"><span>Neon</span></div>
+          <div class="preset-tile"><span>Pulsar</span></div>
+          <div class="preset-tile"><span>Sacudir</span></div>
+          <div class="preset-tile"><span>Teclado</span></div>
+          <div class="preset-tile"><span>Subir</span></div>
+          <div class="preset-tile"><span>Deslocar</span></div>
+          <div class="preset-tile"><span>Mesclar</span></div>
+          <div class="preset-tile"><span>Explosão</span></div>
+          <div class="preset-tile"><span>Rolar</span></div>
+          <div class="preset-tile"><span>Skate</span></div>
+          <div class="preset-tile"><span>Neon</span></div>
+          <div class="preset-tile"><span>Pulsar</span></div>
+          <div class="preset-tile"><span>Sacudir</span></div>
+        </div>
+      </section>
+
+      <section id="workflow" class="workflow">
+        <div class="section-head reveal">
+          <div>
+            <div class="section-kicker">Controle fino</div>
+            <h2 class="section-title">Graph editor e keyframes.</h2>
+          </div>
+
+          <p class="section-subtitle">
+            Além dos presets prontos, o Lumi Motion permite animações personalizadas. Você arrasta,
+            grava pontos, ajusta easing e salva o resultado como preset reutilizável.
+          </p>
+        </div>
+
+        <div class="workflow-grid">
+          <div class="workflow-panel reveal">
+            <h3>Motion path modelável</h3>
+            <p>
+              Cada ponto da linha representa um keyframe. O usuário pode mover pontos, adicionar curvas,
+              ajustar handles e mudar a velocidade do movimento entre eles.
+            </p>
+
+            <div class="curve-editor">
+              <div class="curve-line"></div>
+              <span class="curve-dot a"></span>
+              <span class="curve-dot b"></span>
+              <span class="curve-dot c"></span>
+            </div>
+          </div>
+
+          <div class="workflow-panel reveal">
+            <h3>Presets salvos pelo usuário</h3>
+            <p>
+              Uma animação criada manualmente pode virar preset: duração, keyframes, easing,
+              propriedades animadas e atraso por letra/palavra ficam armazenados.
+            </p>
+
+            <div class="feature-list">
+              <div class="feature-line">
+                <span class="check">✓</span>
+                <span>Salvar animações personalizadas.</span>
+              </div>
+
+              <div class="feature-line">
+                <span class="check">✓</span>
+                <span>Aplicar preset em qualquer texto, vetor ou imagem.</span>
+              </div>
+
+              <div class="feature-line">
+                <span class="check">✓</span>
+                <span>Editar curva, velocidade, delay e intensidade.</span>
+              </div>
+
+              <div class="feature-line">
+                <span class="check">✓</span>
+                <span>Organizar presets por categoria.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="download" class="download-section">
+        <div class="reveal">
+          <div class="section-kicker">Download</div>
+          <h2>Baixe o Lumi Motion.</h2>
+
+          <p>
+            Acesse o repositório do Lumi Motion no GitHub, baixe o projeto e rode localmente com Python. A proposta é simples: abrir, importar, animar e exportar com FFmpeg.
+          </p>
+
+          <div class="hero-actions">
+            <a href="https://github.com/guell11/Lumi-motion/tree/main" target="_blank" rel="noopener" class="download-button">⬇ Download Windows</a>
+            <a href="https://github.com/guell11/Lumi-motion/tree/main" target="_blank" rel="noopener" class="ghost-button">Ver repositório</a>
+          </div>
+        </div>
+
+        <div class="download-box reveal">
+          <div class="download-option">
+            <div>
+              <strong>Windows</strong>
+              <span>Clone ou baixe o repositório e rode com Python.</span>
+            </div>
+            <a class="mini-button" href="https://github.com/guell11/Lumi-motion/tree/main" target="_blank" rel="noopener">GitHub</a>
+          </div>
+
+          <div class="download-option">
+            <div>
+              <strong>Linux</strong>
+              <span>Use o mesmo código-fonte com PyQt6, QWebEngineView e FFmpeg.</span>
+            </div>
+            <a class="mini-button" href="https://github.com/guell11/Lumi-motion/tree/main" target="_blank" rel="noopener">GitHub</a>
+          </div>
+
+          <div class="download-option">
+            <div>
+              <strong>macOS</strong>
+              <span>Projeto Python multiplataforma pelo mesmo repositório.</span>
+            </div>
+            <a class="mini-button" href="https://github.com/guell11/Lumi-motion/tree/main" target="_blank" rel="noopener">GitHub</a>
+          </div>
+                  <div class="download-option">
+            <div>
+              <strong>Como rodar</strong>
+              <span>python -m pip install -r requirements.txt<br />python app.py<br />ou use .\run_editor.bat no Windows</span>
+            </div>
+            <a class="mini-button" href="https://github.com/guell11/Lumi-motion/tree/main" target="_blank" rel="noopener">Código</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <span>© 2026 Lumi Motion. Editor de vídeo motion graphics.</span>
+      <span>Python • PyQt6 • Textos animados • Vetores • Keyframes • FFmpeg</span>
+    </footer>
+  </div>
+
+  <script type="module">
+    import * as THREE from "three";
+
+    const root = document.documentElement;
+    const shell = document.getElementById("tilt-shell");
+
+    let targetX = window.innerWidth / 2;
+    let targetY = window.innerHeight / 2;
+    let smoothX = targetX;
+    let smoothY = targetY;
+
+    window.addEventListener("pointermove", (event) => {
+      targetX = event.clientX;
+      targetY = event.clientY;
+
+      root.style.setProperty("--mouse-x", `${event.clientX}px`);
+      root.style.setProperty("--mouse-y", `${event.clientY}px`);
+    });
+
+    window.addEventListener("scroll", () => {
+      const shift = Math.min(80, window.scrollY * 0.035);
+      root.style.setProperty("--scroll-shift", `${shift}px`);
+    }, { passive: true });
+
+    function updateTilt() {
+      smoothX += (targetX - smoothX) * 0.08;
+      smoothY += (targetY - smoothY) * 0.08;
+
+      const nx = smoothX / window.innerWidth - 0.5;
+      const ny = smoothY / window.innerHeight - 0.5;
+
+      if (shell) {
+        shell.style.setProperty("--ry", `${nx * 8}deg`);
+        shell.style.setProperty("--rx", `${-ny * 7}deg`);
+      }
+
+      requestAnimationFrame(updateTilt);
+    }
+
+    updateTilt();
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) entry.target.classList.add("visible");
+      });
+    }, { threshold: 0.18 });
+
+    document.querySelectorAll(".reveal, .story-card, .css-only-banner").forEach((el, index) => {
+      el.style.transitionDelay = `${Math.min(index * 0.04, 0.28)}s`;
+      observer.observe(el);
+    });
+
+    function createScene(canvas, mode = "hero") {
+      const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(mode === "hero" ? 42 : 48, 1, 0.1, 100);
+      camera.position.set(0, 0.35, mode === "hero" ? 7.5 : 6.4);
+
+      const group = new THREE.Group();
+      scene.add(group);
+
+      const matPurple = new THREE.MeshPhysicalMaterial({
+        color: 0x8b4dff,
+        metalness: 0.35,
+        roughness: 0.18,
+        transmission: 0.28,
+        thickness: 0.55,
+        transparent: true,
+        opacity: 0.82
+      });
+
+      const matCyan = new THREE.MeshPhysicalMaterial({
+        color: 0x00e7ff,
+        metalness: 0.22,
+        roughness: 0.12,
+        transparent: true,
+        opacity: 0.76
+      });
+
+      const matPink = new THREE.MeshPhysicalMaterial({
+        color: 0xff3aa8,
+        metalness: 0.22,
+        roughness: 0.2,
+        transparent: true,
+        opacity: 0.76
+      });
+
+      const matGreen = new THREE.MeshPhysicalMaterial({
+        color: 0x71ffcb,
+        metalness: 0.18,
+        roughness: 0.2,
+        transparent: true,
+        opacity: 0.72
+      });
+
+      const objects = [];
+
+      const torus = new THREE.Mesh(new THREE.TorusKnotGeometry(1.1, 0.28, 140, 18), matPurple);
+      torus.position.set(mode === "hero" ? 3.1 : 1.9, 1.1, -1.2);
+      group.add(torus);
+      objects.push(torus);
+
+      const sphere = new THREE.Mesh(new THREE.IcosahedronGeometry(1.1, 1), matCyan);
+      sphere.position.set(mode === "hero" ? -3.1 : -1.8, -0.7, -1.4);
+      group.add(sphere);
+      objects.push(sphere);
+
+      const cube = new THREE.Mesh(new THREE.BoxGeometry(1.45, 1.45, 1.45), matPink);
+      cube.position.set(mode === "hero" ? 2.8 : 0.1, -2.1, -0.8);
+      cube.rotation.set(0.4, 0.7, 0.2);
+      group.add(cube);
+      objects.push(cube);
+
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(0.85, 1.9, 5), matGreen);
+      cone.position.set(mode === "hero" ? -2.0 : 2.2, 2.1, -2.2);
+      group.add(cone);
+      objects.push(cone);
+
+      const capsule = new THREE.Mesh(new THREE.CapsuleGeometry(0.45, 1.5, 8, 20), matPurple);
+      capsule.position.set(mode === "hero" ? 0.4 : -2.3, 2.35, -2.6);
+      capsule.rotation.z = 0.7;
+      group.add(capsule);
+      objects.push(capsule);
+
+      const ringMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: mode === "hero" ? 0.13 : 0.18
+      });
+
+      const count = mode === "hero" ? 34 : 46;
+
+      for (let i = 0; i < count; i++) {
+        const geo = new THREE.TorusGeometry(0.08 + Math.random() * 0.18, 0.006, 8, 24);
+        const mesh = new THREE.Mesh(geo, ringMaterial);
+
+        mesh.position.set(
+          (Math.random() - 0.5) * 8,
+          (Math.random() - 0.5) * 6,
+          -2 - Math.random() * 4
+        );
+
+        mesh.rotation.set(
+          Math.random() * Math.PI,
+          Math.random() * Math.PI,
+          Math.random() * Math.PI
+        );
+
+        group.add(mesh);
+        objects.push(mesh);
+      }
+
+      const light1 = new THREE.PointLight(0xff3aa8, 3.2, 12);
+      light1.position.set(-3, 3, 4);
+      scene.add(light1);
+
+      const light2 = new THREE.PointLight(0x00e7ff, 3.4, 12);
+      light2.position.set(4, -2, 4);
+      scene.add(light2);
+
+      scene.add(new THREE.AmbientLight(0xffffff, 0.72));
+
+      function resize() {
+        const rect = canvas.getBoundingClientRect();
+        renderer.setSize(rect.width, rect.height, false);
+        camera.aspect = rect.width / Math.max(1, rect.height);
+        camera.updateProjectionMatrix();
+      }
+
+      window.addEventListener("resize", resize);
+      resize();
+
+      const clock = new THREE.Clock();
+
+      function render() {
+        const t = clock.getElapsedTime();
+
+        const nx = targetX / window.innerWidth - 0.5;
+        const ny = targetY / window.innerHeight - 0.5;
+
+        group.rotation.y += (nx * 0.45 - group.rotation.y) * 0.045;
+        group.rotation.x += (-ny * 0.32 - group.rotation.x) * 0.045;
+
+        objects.forEach((obj, i) => {
+          obj.rotation.x += 0.002 + i * 0.00008;
+          obj.rotation.y += 0.003 + i * 0.00007;
+        });
+
+        sphere.position.y = -0.7 + Math.sin(t * 1.2) * 0.16;
+        cube.position.y = -2.1 + Math.cos(t * 1.1) * 0.18;
+        cone.position.y += Math.sin(t * 1.4) * 0.0008;
+
+        renderer.render(scene, camera);
+        requestAnimationFrame(render);
+      }
+
+      render();
+    }
+
+    createScene(document.getElementById("three-scene"), "hero");
+    createScene(document.getElementById("feature-3d-canvas"), "feature");
+  </script>
+</body>
+</html>
