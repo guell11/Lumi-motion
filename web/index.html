@@ -1,1 +1,191 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lumi Motion Video Editor</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
+  </head>
+  <body>
+    <section id="projectHub" class="project-hub">
+      <div class="hub-bg"></div>
+      <div class="hub-card">
+        <div class="hub-brand">
+          <div class="hub-logo">Lumi</div>
+          <div>
+            <h1 data-i18n="hubTitle">Lumi Motion</h1>
+            <p data-i18n="hubSubtitle">Crie motion graphics, videos e textos 3D com timeline e keyframes.</p>
+          </div>
+        </div>
+        <div class="hub-actions">
+          <button id="hubNewProjectBtn" class="primary" data-i18n="newProject">Novo projeto</button>
+          <button id="hubOpenProjectBtn" data-i18n="openProject">Abrir projeto</button>
+          <label>
+            <span data-i18n="language">Idioma</span>
+            <select id="languageSelect">
+              <option value="pt-BR">Português</option>
+              <option value="en-US">English</option>
+            </select>
+          </label>
+        </div>
+        <div class="hub-recent-head">
+          <strong data-i18n="recentProjects">Projetos recentes</strong>
+          <button id="hubRefreshBtn" data-i18n="refresh">Atualizar</button>
+        </div>
+        <div id="recentProjects" class="recent-projects"></div>
+      </div>
+    </section>
+    <div id="app">
+      <header class="topbar">
+        <div class="brand">Lumi</div>
+        <nav class="tool-tabs" id="toolTabs">
+          <button class="active" data-panel="media" data-i18n="media">Midia</button>
+          <button data-panel="audio" data-i18n="audio">Audio</button>
+          <button data-panel="text" data-i18n="text">Texto</button>
+          <button data-panel="shapes" data-i18n="stickers">Stickers</button>
+          <button data-panel="animations" data-i18n="animations">Animacoes</button>
+          <button data-panel="effects" data-i18n="effects">Efeitos</button>
+          <button data-panel="transitions" data-i18n="transitions">Transicoes</button>
+          <button data-panel="filters" data-i18n="filters">Filtros</button>
+          <button data-panel="adjust" data-i18n="adjust">Ajuste</button>
+          <button data-panel="templates" data-i18n="templates">Modelos</button>
+        </nav>
+        <div class="top-actions">
+          <span id="autosaveStatus">Autosave pronto</span>
+          <button id="openProjectBtn" data-i18n="open">Abrir</button>
+          <button id="saveProjectBtn" data-i18n="save">Salvar</button>
+          <button id="exportBtn" class="primary" data-i18n="export">Exportar</button>
+        </div>
+      </header>
 
+      <main class="workspace">
+        <aside class="left-panel">
+          <div class="panel-head">
+            <strong id="panelTitle">Midia</strong>
+            <input id="panelSearch" type="search" placeholder="Pesquisar" />
+          </div>
+          <div id="panelContent" class="panel-content"></div>
+        </aside>
+
+        <section class="preview-area">
+          <div class="preview-head">
+            <span id="projectName" contenteditable="true">Projeto sem titulo</span>
+            <div class="preview-tools">
+              <button id="gridToggleBtn" title="Grid">Grid</button>
+              <button id="snapToggleBtn" title="Magnetismo">Snap</button>
+              <button id="motionToggleBtn" title="Caminho de movimento">Path</button>
+              <button id="recordMotionBtn" title="Gravar movimento">REC mov</button>
+            </div>
+          </div>
+          <div class="stage-shell" id="stageShell">
+            <canvas id="sceneCanvas" width="1920" height="1080"></canvas>
+            <canvas id="overlayCanvas" width="1920" height="1080"></canvas>
+          </div>
+          <div class="transport">
+            <div class="timecode">
+              <span id="currentTimeLabel">00:00:00</span>
+              <span>/</span>
+              <span id="durationLabel">00:00:15</span>
+            </div>
+            <button id="goStartBtn">|&lt;</button>
+            <button id="playBtn" class="play">▶</button>
+            <button id="goEndBtn">&gt;|</button>
+            <label>Zoom <input id="canvasZoom" type="range" min="25" max="160" value="72" /></label>
+          </div>
+        </section>
+
+        <aside class="right-panel">
+          <div class="right-tabs">
+            <button class="active" data-right="basic">Basico</button>
+            <button data-right="animation">Animacao</button>
+            <button data-right="audio">Audio</button>
+            <button data-right="color">Cor</button>
+            <button data-right="graph">Curva</button>
+            <button data-right="camera">Camera</button>
+          </div>
+          <div id="propertiesPanel" class="properties-panel"></div>
+          <canvas id="graphCanvas" width="360" height="180"></canvas>
+        </aside>
+      </main>
+
+      <section class="timeline-section">
+        <div class="timeline-toolbar">
+          <button id="addTextBtn">+ Texto</button>
+          <button id="addText3DBtn">+ Texto 3D</button>
+          <button id="addShapeBtn">+ Shape</button>
+          <button id="splitBtn">Cortar</button>
+          <button id="joinBtn">Unir</button>
+          <button id="duplicateBtn">Duplicar</button>
+          <button id="deleteBtn">Excluir</button>
+          <button id="beatBtn">Beat</button>
+          <span class="spacer"></span>
+          <label>FPS <select id="fpsSelect"><option>24</option><option selected>30</option><option>60</option></select></label>
+          <label>Timeline <input id="timelineZoom" type="range" min="30" max="180" value="72" /></label>
+        </div>
+        <div class="timeline" id="timeline">
+          <div class="track-labels" id="trackLabels"></div>
+          <div class="track-canvas">
+            <div class="ruler" id="ruler"></div>
+            <div class="playhead" id="timelinePlayhead"></div>
+            <div class="tracks" id="tracks"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div id="toast"></div>
+    <div id="exportDialog" class="modal hidden">
+      <div class="modal-card">
+        <h2>Exportar</h2>
+        <label>Formato
+          <select id="exportFormat">
+            <option value="mp4" selected>MP4</option>
+            <option value="gif">GIF</option>
+          </select>
+        </label>
+        <label>Resolucao
+          <select id="exportResolution">
+            <option value="1280x720">720p</option>
+            <option value="1920x1080" selected>1080p</option>
+            <option value="3840x2160">4K</option>
+          </select>
+        </label>
+        <label>FPS
+          <select id="exportFps">
+            <option>24</option>
+            <option selected>30</option>
+            <option>60</option>
+          </select>
+        </label>
+        <label>Bitrate <input id="exportBitrate" value="12M" /></label>
+        <label>Duracao <input id="exportDuration" type="number" step="0.1" min="0.1" value="15" /></label>
+        <progress id="exportProgress" value="0" max="100"></progress>
+        <div class="modal-actions">
+          <button id="cancelExportBtn">Cancelar</button>
+          <button id="startExportBtn" class="primary">Renderizar</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="./js/utils.js"></script>
+    <script src="./js/bridge.js"></script>
+    <script src="./js/easing.js"></script>
+    <script src="./js/presets.js"></script>
+    <script src="./js/state.js"></script>
+    <script src="./js/animationEngine.js"></script>
+    <script src="./js/textAnimator.js"></script>
+    <script src="./js/threeText3D.js"></script>
+    <script src="./js/motionPathEditor.js"></script>
+    <script src="./js/canvas.js"></script>
+    <script src="./js/graphEditor.js"></script>
+    <script src="./js/timeline.js"></script>
+    <script src="./js/properties.js"></script>
+    <script src="./js/mediaLibrary.js"></script>
+    <script src="./js/audioEngine.js"></script>
+    <script src="./js/effects.js"></script>
+    <script src="./js/templates.js"></script>
+    <script src="./js/exporter.js"></script>
+    <script src="./js/app.js"></script>
+  </body>
+</html>
