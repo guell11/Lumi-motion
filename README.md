@@ -2,6 +2,13 @@
 
 Lumi Motion e um editor desktop de video/motion graphics feito com PyQt6 + QWebEngineView. A interface roda em HTML/CSS/JS e conversa com Python por `QWebChannel`. O backend salva projetos, importa arquivos locais e exporta via FFmpeg.
 
+Dê uma conferida na landing page feita com muito ❤️: https://guell11.github.io/Lumi-motion/
+
+
+<img width="2549" height="1361" alt="Captura de tela 2026-05-01 210030" src="https://github.com/user-attachments/assets/728fc610-a061-4b0b-9ed3-204bd1842746" />
+
+
+
 ## Como rodar
 
 ```powershell
