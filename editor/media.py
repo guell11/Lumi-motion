@@ -47,7 +47,37 @@ def file_to_media(path: Path) -> dict[str, Any]:
     }
     if media_type in {"video", "audio"}:
         item["duration"] = probe_duration(path)
+    if media_type == "video":
+        item["hasAudio"] = probe_has_audio(path)
+    if media_type == "svg":
+        # Keep the vector source available to the canvas so fills/strokes can be
+        # recolored without rasterizing or modifying the user's original file.
+        item["svgText"] = path.read_text(encoding="utf-8", errors="replace")
     return item
+
+
+def probe_has_audio(path: Path) -> bool:
+    ffprobe = find_ffprobe(path)
+    if ffprobe:
+        try:
+            result = subprocess.run(
+                [ffprobe, "-v", "error", "-select_streams", "a", "-show_entries", "stream=index", "-of", "csv=p=0", str(path)],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=15,
+            )
+            return bool(result.stdout.strip())
+        except Exception:
+            pass
+    ffmpeg = find_ffmpeg(path)
+    if not ffmpeg:
+        return False
+    try:
+        result = subprocess.run([ffmpeg, "-i", str(path)], capture_output=True, text=True, timeout=15)
+        return "Audio:" in (result.stderr or result.stdout or "")
+    except Exception:
+        return False
 
 
 def probe_duration(path: Path) -> float | None:

@@ -220,7 +220,10 @@ class FFmpegExporter:
         audio_layers = [
             layer
             for layer in layers
-            if layer.get("type") == "audio" and not layer.get("hidden") and (layer.get("mediaId") in media)
+            if layer.get("type") in {"audio", "video"}
+            and not layer.get("hidden")
+            and (layer.get("mediaId") in media)
+            and (layer.get("type") == "audio" or media[layer.get("mediaId")].get("hasAudio") is True)
         ]
         inputs: list[dict[str, str]] = []
         filters: list[str] = []
@@ -241,8 +244,9 @@ class FFmpegExporter:
             high = float(audio.get("high", 0) or 0)
             reverb = max(0.0, min(1.0, float(audio.get("reverb", 0) or 0)))
             duration = float(layer.get("duration") or item.get("duration") or 0)
+            source_in = max(0.0, float(layer.get("sourceIn", 0) or 0))
             label = f"a{idx}"
-            chain = f"[{input_index}:a]adelay={start_ms}:all=1,volume={volume}"
+            chain = f"[{input_index}:a]atrim=start={source_in}:duration={duration},asetpts=PTS-STARTPTS,volume={volume}"
             if abs(pitch) > 0.001:
                 factor = round(2 ** (pitch / 12), 5)
                 tempo_fix = round(1 / factor, 5)
@@ -263,12 +267,20 @@ class FFmpegExporter:
                 chain += f",aecho=0.8:0.88:{int(60 + reverb * 220)}:{round(0.12 + reverb * 0.35, 2)}"
             if audio.get("compressor") or audio.get("enhance"):
                 chain += ",acompressor=threshold=-18dB:ratio=3:attack=12:release=120"
-            if audio.get("limiter") or audio.get("normalize"):
+            if audio.get("enhance"):
+                chain += ",highpass=f=80,lowpass=f=14500"
+            if audio.get("reduceNoise"):
+                chain += ",afftdn=nf=-24"
+            if audio.get("normalize"):
+                chain += ",loudnorm=I=-16:TP=-1.5:LRA=11"
+            if audio.get("limiter"):
                 chain += ",alimiter=limit=0.95"
             if fade_in > 0:
                 chain += f",afade=t=in:st=0:d={fade_in}"
             if fade_out > 0 and duration > fade_out:
                 chain += f",afade=t=out:st={duration - fade_out}:d={fade_out}"
+            if start_ms > 0:
+                chain += f",adelay={start_ms}:all=1"
             chain += f"[{label}]"
             filters.append(chain)
             labels.append(f"[{label}]")

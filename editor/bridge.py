@@ -18,6 +18,7 @@ from .project import load_project, save_project
 class EditorBridge(QObject):
     notify = pyqtSignal(str)
     exportProgress = pyqtSignal(str)
+    mediaImported = pyqtSignal(str)
 
     def __init__(self, paths: AppPaths, parent: QObject | None = None):
         super().__init__(parent)
@@ -50,6 +51,14 @@ class EditorBridge(QObject):
             return json_ok(media=[file_to_media(Path(file)) for file in files])
         except Exception as exc:
             return json_error(str(exc))
+
+    def importDroppedPaths(self, paths: list[str]) -> None:
+        """Import files dropped from Explorer and deliver them to the web UI."""
+        try:
+            media = [file_to_media(Path(path)) for path in paths if Path(path).is_file()]
+            self.mediaImported.emit(json_ok(media=media))
+        except Exception as exc:
+            self.mediaImported.emit(json_error(str(exc)))
 
     @pyqtSlot(result=str)
     def openProjectDialog(self) -> str:
