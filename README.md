@@ -95,10 +95,13 @@ O autosave so comeca depois de criar ou abrir um projeto.
 
 ### Timeline
 
-- Cada camada aparece em uma lane propria.
-- Permite varias camadas no mesmo frame.
+- Pistas reais agrupam vários clips do mesmo tipo sem criar uma lane por camada.
+- Arraste estável com atualização incremental, auto-scroll e Undo em uma única operação.
+- Snapping visual em bordas de clips, playhead e marcadores.
+- Zoom centrado no cursor, ajuste do projeto à largura e timeline redimensionável/recolhível.
+- Seleção múltipla com Shift e ferramentas Selecionar/Lâmina.
 - Arrastar clip move no tempo.
-- Handles laterais cortam duracao.
+- Handles laterais cortam duração preservando o ponto de entrada da mídia.
 - Playhead pode ser clicado ou arrastado para voltar/avancar.
 - `Cortar`, `Unir`, `Duplicar`, `Excluir` e `Beat`.
 - Zoom da timeline.
@@ -173,16 +176,11 @@ Presets:
 
 ### Templates
 
-- Intro forte.
-- Lower third.
-- Titulo animado.
-- Legenda pop.
-- Transicao flash.
-- Pack de shapes.
-- Kinetic words.
-- Beat cards.
-- Moldura vertical.
-- Cartela final.
+- 29 composições prontas em 8 categorias.
+- Lower thirds, openers, captions e logo reveals.
+- Callouts, métricas, pacotes vertical/social e end cards.
+- Metadados de proporção e duração, filtros por categoria e busca.
+- Aplicação transacional: a composição inteira é desfeita com um único Undo.
 
 ### Exportacao
 

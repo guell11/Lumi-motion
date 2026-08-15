@@ -9,7 +9,17 @@ ROOT = Path(__file__).resolve().parent
 
 
 def main() -> int:
-    os.environ.setdefault("QTWEBENGINE_CHROMIUM_FLAGS", "--allow-file-access-from-files --autoplay-policy=no-user-gesture-required")
+    chromium_flags = os.environ.get("QTWEBENGINE_CHROMIUM_FLAGS", "")
+    required_flags = ["--allow-file-access-from-files", "--autoplay-policy=no-user-gesture-required"]
+    # Hardware acceleration is the normal path. Software rendering remains an
+    # explicit recovery mode for problematic drivers instead of penalizing every
+    # editor session (especially canvas/video playback) by default.
+    if sys.platform.startswith("win") and os.environ.get("LUMI_SOFTWARE_RENDERING") == "1":
+        required_flags.append("--disable-gpu")
+    for flag in required_flags:
+        if flag not in chromium_flags:
+            chromium_flags = f"{chromium_flags} {flag}".strip()
+    os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = chromium_flags
     os.environ.setdefault("QT_LOGGING_RULES", "qt.webenginecontext.debug=false")
 
     try:
