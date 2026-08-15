@@ -3,189 +3,191 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Lumi Motion Video Editor</title>
+    <meta name="color-scheme" content="dark" />
+    <title>Lumi Motion — Editor</title>
     <link rel="stylesheet" href="./styles.css" />
     <script src="qrc:///qtwebchannel/qwebchannel.js"></script>
   </head>
   <body>
-    <section id="projectHub" class="project-hub">
-      <div class="hub-bg"></div>
-      <div class="hub-card">
+    <section id="projectHub" class="project-hub" aria-labelledby="hubTitle">
+      <div class="hub-aurora" aria-hidden="true"></div>
+      <div class="hub-shell glass-shell">
         <div class="hub-brand">
-          <div class="hub-logo">Lumi</div>
+          <div class="brand-mark" aria-hidden="true"><span></span></div>
           <div>
-            <h1 data-i18n="hubTitle">Lumi Motion</h1>
-            <p data-i18n="hubSubtitle">Crie motion graphics, videos e textos 3D com timeline e keyframes.</p>
+            <span class="eyebrow">CRIAR • ANIMAR • PUBLICAR</span>
+            <h1 id="hubTitle" data-i18n="hubTitle">Lumi Motion</h1>
+            <p data-i18n="hubSubtitle">Motion design e edição de vídeo, sem interromper seu fluxo.</p>
           </div>
         </div>
-        <div class="hub-actions">
-          <button id="hubNewProjectBtn" class="primary" data-i18n="newProject">Novo projeto</button>
-          <button id="hubOpenProjectBtn" data-i18n="openProject">Abrir projeto</button>
-          <label>
+        <div class="hub-quickstart">
+          <button id="hubNewProjectBtn" class="primary hero-action" data-i18n="newProject"><span>＋</span>Novo projeto</button>
+          <button id="hubOpenProjectBtn" class="secondary-action" data-i18n="openProject"><span>⌘O</span>Abrir projeto</button>
+          <label class="language-field">
             <span data-i18n="language">Idioma</span>
-            <select id="languageSelect">
+            <select id="languageSelect" aria-label="Idioma">
               <option value="pt-BR">Português</option>
               <option value="en-US">English</option>
             </select>
           </label>
         </div>
         <div class="hub-recent-head">
-          <strong data-i18n="recentProjects">Projetos recentes</strong>
-          <button id="hubRefreshBtn" data-i18n="refresh">Atualizar</button>
+          <div><strong data-i18n="recentProjects">Projetos recentes</strong><span>Continue exatamente de onde parou</span></div>
+          <button id="hubRefreshBtn" class="icon-text-button" data-i18n="refresh">↻ Atualizar</button>
         </div>
-        <div id="recentProjects" class="recent-projects"></div>
+        <div id="recentProjects" class="recent-projects" aria-live="polite"></div>
+        <div class="hub-footer"><span>Timeline multipista</span><span>Keyframes & curvas</span><span>Motion templates</span><span>Exportação FFmpeg</span></div>
       </div>
     </section>
-    <div id="app">
-      <header class="topbar">
-        <div class="brand">Lumi</div>
-        <nav class="tool-tabs" id="toolTabs">
-          <button class="active" data-panel="media" data-i18n="media">Midia</button>
-          <button data-panel="audio" data-i18n="audio">Audio</button>
-          <button data-panel="text" data-i18n="text">Texto</button>
-          <button data-panel="shapes" data-i18n="stickers">Stickers</button>
-          <button data-panel="animations" data-i18n="animations">Animacoes</button>
-          <button data-panel="effects" data-i18n="effects">Efeitos</button>
-          <button data-panel="transitions" data-i18n="transitions">Transicoes</button>
-          <button data-panel="filters" data-i18n="filters">Filtros</button>
-          <button data-panel="adjust" data-i18n="adjust">Ajuste</button>
-          <button data-panel="templates" data-i18n="templates">Modelos</button>
+
+    <div id="app" class="editor-app">
+      <header class="topbar glass-bar">
+        <div class="app-brand" title="Lumi Motion">
+          <div class="brand-mark small" aria-hidden="true"><span></span></div>
+          <div><strong>Lumi</strong><small>MOTION</small></div>
+        </div>
+        <nav class="tool-tabs" id="toolTabs" aria-label="Biblioteca criativa">
+          <button class="active" data-panel="media" data-i18n="media"><span>▣</span>Mídia</button>
+          <button data-panel="audio" data-i18n="audio"><span>♫</span>Áudio</button>
+          <button data-panel="text" data-i18n="text"><span>T</span>Texto</button>
+          <button data-panel="shapes" data-i18n="stickers"><span>◇</span>Elementos</button>
+          <button data-panel="animations" data-i18n="animations"><span>↝</span>Animação</button>
+          <button data-panel="effects" data-i18n="effects"><span>✦</span>Efeitos</button>
+          <button data-panel="transitions" data-i18n="transitions"><span>◫</span>Transições</button>
+          <button data-panel="filters" data-i18n="filters"><span>◉</span>Filtros</button>
+          <button data-panel="adjust" data-i18n="adjust"><span>≡</span>Ajuste</button>
+          <button data-panel="templates" data-i18n="templates"><span>⌘</span>Modelos</button>
         </nav>
         <div class="top-actions">
-          <span id="autosaveStatus">Autosave pronto</span>
+          <span id="autosaveStatus" class="save-status">● Salvo</span>
+          <button id="undoBtn" class="icon-button" aria-label="Desfazer" title="Desfazer (Ctrl+Z)">↶</button>
+          <button id="redoBtn" class="icon-button" aria-label="Refazer" title="Refazer (Ctrl+Y)">↷</button>
           <button id="openProjectBtn" data-i18n="open">Abrir</button>
           <button id="saveProjectBtn" data-i18n="save">Salvar</button>
-          <button id="exportBtn" class="primary" data-i18n="export">Exportar</button>
+          <button id="exportBtn" class="primary export-action" data-i18n="export"><span>↗</span>Exportar</button>
         </div>
       </header>
 
       <main class="workspace">
-        <aside class="left-panel">
+        <aside class="left-panel panel-surface" aria-label="Biblioteca">
           <div class="panel-head">
-            <strong id="panelTitle">Midia</strong>
-            <input id="panelSearch" type="search" placeholder="Pesquisar" />
+            <div><span class="panel-kicker">BIBLIOTECA</span><strong id="panelTitle">Mídia</strong></div>
+            <label class="search-field"><span aria-hidden="true">⌕</span><input id="panelSearch" type="search" placeholder="Buscar mídia, efeitos…" aria-label="Buscar na biblioteca" /><kbd>⌘K</kbd></label>
           </div>
           <div id="panelContent" class="panel-content"></div>
         </aside>
+        <div id="leftResizeHandle" class="pane-resizer vertical" role="separator" aria-orientation="vertical" aria-label="Redimensionar biblioteca" tabindex="0"></div>
 
         <section class="preview-area">
           <div class="preview-head">
-            <span id="projectName" contenteditable="true">Projeto sem titulo</span>
-            <div class="preview-tools">
-              <button id="gridToggleBtn" title="Grid">Grid</button>
-              <button id="snapToggleBtn" title="Magnetismo">Snap</button>
-              <button id="motionToggleBtn" title="Caminho de movimento">Path</button>
-              <button id="recordMotionBtn" title="Gravar movimento">REC mov</button>
+            <div class="project-identity"><span class="status-dot"></span><span id="projectName" contenteditable="true" spellcheck="false">Projeto sem título</span><span id="projectFormat" class="project-format">1920 × 1080</span></div>
+            <div class="preview-tools" role="toolbar" aria-label="Ferramentas do canvas">
+              <select id="projectAspectPreset" class="aspect-preset-select" title="Formato do projeto" aria-label="Formato do projeto"><option value="1920x1080">16:9</option><option value="1080x1920">9:16</option><option value="1080x1080">1:1</option><option value="1080x1350">4:5</option></select>
+              <select id="platformPreviewSelect" class="platform-preview-select" title="Simular plataforma" aria-label="Simular plataforma"><option value="clean">Preview limpo</option><option value="tiktok">TikTok</option><option value="reels">Instagram Reels</option><option value="shorts">YouTube Shorts</option></select>
+              <button id="gridToggleBtn" title="Mostrar grade" aria-label="Mostrar grade">#</button>
+              <button id="snapToggleBtn" title="Magnetismo" aria-label="Ativar magnetismo">⌁</button>
+              <button id="motionToggleBtn" title="Caminho de movimento" aria-label="Mostrar caminho de movimento">↝</button>
+              <button id="recordMotionBtn" class="record-control" title="Criar keyframes automaticamente"><i></i>AUTO KEY</button>
+              <button class="panel-popout-button" draggable="true" data-panel-popout="preview" data-panel-drag="preview" title="Arraste para destacar o player em outra janela" aria-label="Destacar player">⠿↗</button>
             </div>
           </div>
           <div class="stage-shell" id="stageShell">
+            <div class="stage-grid" aria-hidden="true"></div>
             <canvas id="sceneCanvas" width="1920" height="1080"></canvas>
             <canvas id="overlayCanvas" width="1920" height="1080"></canvas>
+            <div id="platformPreviewOverlay" class="platform-preview-overlay" hidden aria-hidden="true"><div class="platform-top"><span class="platform-name"></span><span>Seguindo&nbsp;&nbsp; Para você</span></div><div class="platform-actions"><span>♥<small>12,8K</small></span><span>●<small>324</small></span><span>↗<small>Enviar</small></span><span>♫</span></div><div class="platform-bottom"><strong>@seu_perfil</strong><span>Seu texto aparece aqui · #motion #design</span><i></i></div><div class="platform-safe-zone"></div></div>
+            <div class="canvas-corner top-left" aria-hidden="true"></div><div class="canvas-corner top-right" aria-hidden="true"></div>
+            <div class="canvas-corner bottom-left" aria-hidden="true"></div><div class="canvas-corner bottom-right" aria-hidden="true"></div>
           </div>
-          <div class="transport">
-            <div class="timecode">
-              <span id="currentTimeLabel">00:00:00</span>
-              <span>/</span>
-              <span id="durationLabel">00:00:15</span>
+          <div class="transport glass-shell" aria-label="Controles de reprodução">
+            <div class="timecode"><span id="currentTimeLabel">00:00:00.00</span><span class="time-separator">/</span><span id="durationLabel">00:00:15.00</span></div>
+            <div class="transport-controls">
+              <button id="goStartBtn" aria-label="Ir ao início" title="Início">❮</button>
+              <button id="playBtn" class="play" aria-label="Reproduzir">▶</button>
+              <button id="goEndBtn" aria-label="Ir ao fim" title="Fim">❯</button>
             </div>
-            <button id="goStartBtn">|&lt;</button>
-            <button id="playBtn" class="play">▶</button>
-            <button id="goEndBtn">&gt;|</button>
-            <label>Zoom <input id="canvasZoom" type="range" min="25" max="160" value="72" /></label>
+            <label class="zoom-control"><span>Canvas</span><input id="canvasZoom" type="range" min="25" max="160" value="72" aria-label="Zoom do canvas" /><output>72%</output></label>
           </div>
         </section>
 
-        <aside class="right-panel">
-          <div class="right-tabs">
-            <button class="active" data-right="basic">Basico</button>
-            <button data-right="animation">Animacao</button>
-            <button data-right="audio">Audio</button>
-            <button data-right="color">Cor</button>
-            <button data-right="graph">Curva</button>
-            <button data-right="camera">Camera</button>
+        <div id="rightResizeHandle" class="pane-resizer vertical" role="separator" aria-orientation="vertical" aria-label="Redimensionar inspetor" tabindex="0"></div>
+        <aside class="right-panel panel-surface" aria-label="Inspetor">
+          <div class="inspector-head"><div><span class="panel-kicker">INSPETOR</span><strong>Propriedades</strong></div><div class="panel-window-actions"><button class="panel-popout-button" draggable="true" data-panel-popout="inspector" data-panel-drag="inspector" title="Arraste para destacar o inspetor" aria-label="Destacar inspetor">⠿↗</button><button id="collapseInspectorBtn" class="icon-button" title="Recolher inspetor" aria-label="Recolher inspetor">›</button></div></div>
+          <div class="right-tabs" role="tablist" aria-label="Seções de propriedades">
+            <button class="active" data-right="basic" role="tab">Básico</button>
+            <button data-right="animation" role="tab">Animar</button>
+            <button data-right="audio" role="tab">Áudio</button>
+            <button data-right="color" role="tab">Cor</button>
+            <button data-right="graph" role="tab">Curva</button>
+            <button data-right="camera" role="tab">Câmera</button>
           </div>
           <div id="propertiesPanel" class="properties-panel"></div>
-          <canvas id="graphCanvas" width="360" height="180"></canvas>
+          <canvas id="graphCanvas" width="360" height="180" aria-label="Editor de curvas"></canvas>
         </aside>
       </main>
 
-      <section class="timeline-section">
+      <section class="timeline-section" aria-label="Timeline">
+        <div id="timelineResizeHandle" class="pane-resizer horizontal" role="separator" aria-orientation="horizontal" aria-label="Redimensionar timeline" tabindex="0"><span></span></div>
         <div class="timeline-toolbar">
-          <button id="addTextBtn">+ Texto</button>
-          <button id="addText3DBtn">+ Texto 3D</button>
-          <button id="addShapeBtn">+ Shape</button>
-          <button id="splitBtn">Cortar</button>
-          <button id="joinBtn">Unir</button>
-          <button id="duplicateBtn">Duplicar</button>
-          <button id="deleteBtn">Excluir</button>
-          <button id="beatBtn">Beat</button>
+          <div class="toolbar-group history-tools">
+            <button id="selectToolBtn" class="tool-button active" title="Selecionar (V)" aria-label="Ferramenta selecionar">↖</button>
+            <button id="bladeToolBtn" class="tool-button" title="Lâmina (B)" aria-label="Ferramenta lâmina">⌁</button>
+            <button id="splitBtn" title="Cortar no playhead (S)">✂ <span>Cortar</span></button>
+          </div>
+          <div class="toolbar-group edit-tools">
+            <button id="addTextBtn" title="Adicionar texto">＋T</button>
+            <button id="addText3DBtn" title="Adicionar texto 3D">＋3D</button>
+            <button id="addShapeBtn" title="Adicionar forma">＋◇</button>
+            <button id="joinBtn" title="Unir com o próximo">Unir</button>
+            <button id="duplicateBtn" title="Duplicar (Ctrl+D)">Duplicar</button>
+            <button id="deleteBtn" title="Excluir (Delete)" class="danger-ghost">Excluir</button>
+          </div>
+          <div class="toolbar-group timeline-toggles">
+            <button id="beatBtn" title="Adicionar marcador">◆ Beat</button>
+            <button id="timelineSnapBtn" class="active" title="Magnetismo">⌁ Snap</button>
+          </div>
           <span class="spacer"></span>
-          <label>FPS <select id="fpsSelect"><option>24</option><option selected>30</option><option>60</option></select></label>
-          <label>Timeline <input id="timelineZoom" type="range" min="30" max="180" value="72" /></label>
+          <span id="timelineSelectionInfo" class="timeline-selection-info">Nenhum clipe selecionado</span>
+          <label class="compact-select">FPS <select id="fpsSelect" aria-label="Frames por segundo"><option>24</option><option selected>30</option><option>60</option></select></label>
+          <button id="fitTimelineBtn" title="Ajustar projeto à largura">Ajustar</button>
+          <label class="timeline-zoom"><span>−</span><input id="timelineZoom" type="range" min="24" max="260" value="72" aria-label="Zoom horizontal da timeline" /><span>＋</span></label>
+          <button class="panel-popout-button" draggable="true" data-panel-popout="timeline" data-panel-drag="timeline" title="Arraste para destacar a timeline" aria-label="Destacar timeline">⠿↗</button>
+          <button id="collapseTimelineBtn" class="icon-button" title="Recolher timeline" aria-label="Recolher timeline">⌄</button>
         </div>
         <div class="timeline" id="timeline">
           <div class="track-labels" id="trackLabels"></div>
           <div class="track-canvas">
             <div class="ruler" id="ruler"></div>
-            <div class="playhead" id="timelinePlayhead"></div>
+            <div class="snap-guide" id="timelineSnapGuide" hidden></div>
+            <div class="playhead" id="timelinePlayhead"><span class="playhead-handle"></span></div>
             <div class="tracks" id="tracks"></div>
           </div>
         </div>
+        <div class="timeline-statusbar"><span><kbd>Space</kbd> Play</span><span><kbd>S</kbd> Cortar</span><span><kbd>← →</kbd> 1 frame</span><span><kbd>Shift</kbd> Multisseleção</span><span class="spacer"></span><span id="timelineDurationStatus">00:00:15 • 30 fps</span></div>
       </section>
     </div>
 
-    <div id="toast"></div>
-    <div id="exportDialog" class="modal hidden">
-      <div class="modal-card">
-        <h2>Exportar</h2>
-        <label>Formato
-          <select id="exportFormat">
-            <option value="mp4" selected>MP4</option>
-            <option value="gif">GIF</option>
-          </select>
-        </label>
-        <label>Resolucao
-          <select id="exportResolution">
-            <option value="1280x720">720p</option>
-            <option value="1920x1080" selected>1080p</option>
-            <option value="3840x2160">4K</option>
-          </select>
-        </label>
-        <label>FPS
-          <select id="exportFps">
-            <option>24</option>
-            <option selected>30</option>
-            <option>60</option>
-          </select>
-        </label>
-        <label>Bitrate <input id="exportBitrate" value="12M" /></label>
-        <label>Duracao <input id="exportDuration" type="number" step="0.1" min="0.1" value="15" /></label>
-        <progress id="exportProgress" value="0" max="100"></progress>
-        <div class="modal-actions">
-          <button id="cancelExportBtn">Cancelar</button>
-          <button id="startExportBtn" class="primary">Renderizar</button>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <div id="exportDialog" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="exportTitle">
+      <div class="modal-card glass-shell">
+        <div class="modal-heading"><div><span class="panel-kicker">ENTREGA</span><h2 id="exportTitle">Exportar projeto</h2></div><button id="cancelExportBtn" class="icon-button" aria-label="Fechar">×</button></div>
+        <div class="export-grid">
+          <label>Formato<select id="exportFormat"><option value="mp4" selected>MP4</option><option value="gif">GIF</option></select></label>
+          <label>Resolução<select id="exportResolution"><option value="1280x720">720p</option><option value="1920x1080" selected>1080p</option><option value="3840x2160">4K</option></select></label>
+          <label>FPS<select id="exportFps"><option>24</option><option selected>30</option><option>60</option></select></label>
+          <label>Bitrate<input id="exportBitrate" value="12M" /></label>
         </div>
+        <label>Duração<input id="exportDuration" type="number" step="0.1" min="0.1" value="15" /></label>
+        <progress id="exportProgress" value="0" max="100"></progress>
+        <div class="modal-actions"><span>O arquivo será renderizado com FFmpeg.</span><button id="startExportBtn" class="primary">Renderizar vídeo</button></div>
       </div>
     </div>
 
-    <script src="./js/utils.js"></script>
-    <script src="./js/bridge.js"></script>
-    <script src="./js/easing.js"></script>
-    <script src="./js/presets.js"></script>
-    <script src="./js/state.js"></script>
-    <script src="./js/animationEngine.js"></script>
-    <script src="./js/textAnimator.js"></script>
-    <script src="./js/threeText3D.js"></script>
-    <script src="./js/motionPathEditor.js"></script>
-    <script src="./js/canvas.js"></script>
-    <script src="./js/graphEditor.js"></script>
-    <script src="./js/timeline.js"></script>
-    <script src="./js/properties.js"></script>
-    <script src="./js/mediaLibrary.js"></script>
-    <script src="./js/audioEngine.js"></script>
-    <script src="./js/effects.js"></script>
-    <script src="./js/templates.js"></script>
-    <script src="./js/exporter.js"></script>
-    <script src="./js/app.js"></script>
+    <script src="./js/utils.js"></script><script src="./js/bridge.js"></script><script src="./js/easing.js"></script>
+    <script src="./js/presets.js"></script><script src="./js/state.js"></script><script src="./js/svgLibrary.js"></script><script src="./js/animationEngine.js"></script>
+    <script src="./js/textAnimator.js"></script><script src="./js/threeText3D.js"></script><script src="./js/motionPathEditor.js"></script>
+    <script src="./js/canvas.js"></script><script src="./js/graphEditor.js"></script><script src="./js/timeline.js"></script>
+    <script src="./js/properties.js"></script><script src="./js/mediaLibrary.js"></script><script src="./js/audioEngine.js"></script>
+    <script src="./js/effects.js"></script><script src="./js/templates.js"></script><script src="./js/exporter.js"></script><script src="./js/panelDock.js"></script><script src="./js/app.js"></script>
   </body>
 </html>
