@@ -21,6 +21,11 @@
                 document.dispatchEvent(new CustomEvent("lumi:export-progress", { detail: parseJSON(payload, {}) }));
               });
             }
+            if (this.bridge.mediaImported) {
+              this.bridge.mediaImported.connect((payload) => {
+                document.dispatchEvent(new CustomEvent("lumi:media-imported", { detail: parseJSON(payload, {}) }));
+              });
+            }
             resolve(this.bridge);
           });
           return;
@@ -56,8 +61,8 @@
           input.type = "file";
           input.multiple = true;
           input.accept = "video/*,audio/*,image/*,.svg,.ttf,.otf";
-          input.onchange = () => {
-            const media = Array.from(input.files || []).map((file) => {
+          input.onchange = async () => {
+            const media = await Promise.all(Array.from(input.files || []).map(async (file) => {
               const type = file.type.startsWith("video/")
                 ? "video"
                 : file.type.startsWith("audio/")
@@ -67,7 +72,7 @@
                     : file.type.startsWith("image/")
                       ? "image"
                       : "file";
-              return {
+              const item = {
                 id: Editor.Utils.uid("media"),
                 name: file.name,
                 path: "",
@@ -77,7 +82,9 @@
                 size: file.size,
                 duration: null,
               };
-            });
+              if (type === "svg") item.svgText = await file.text();
+              return item;
+            }));
             callback(JSON.stringify({ ok: true, media }));
           };
           input.click();

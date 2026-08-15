@@ -59,6 +59,8 @@
       this.history = [];
       this.future = [];
       this.listeners = new Set();
+      this.transactionDepth = 0;
+      this.transactionReason = "transaction";
     }
 
     subscribe(listener) {
@@ -67,14 +69,37 @@
     }
 
     emit(reason = "change") {
-      this.project.updatedAt = new Date().toISOString();
+      if (!["time", "timeline:drag-live", "canvas:drag-live", "record:sample"].includes(reason)) {
+        this.project.updatedAt = new Date().toISOString();
+      }
+      if (this.transactionDepth > 0) {
+        this.transactionReason = reason;
+        return;
+      }
       this.listeners.forEach((listener) => listener(this, reason));
     }
 
     checkpoint() {
+      if (this.transactionDepth > 0) return;
       this.history.push(JSON.stringify(this.project));
       if (this.history.length > 80) this.history.shift();
       this.future.length = 0;
+    }
+
+    beginTransaction(reason = "transaction") {
+      if (this.transactionDepth === 0) {
+        this.history.push(JSON.stringify(this.project));
+        if (this.history.length > 80) this.history.shift();
+        this.future.length = 0;
+        this.transactionReason = reason;
+      }
+      this.transactionDepth += 1;
+    }
+
+    endTransaction(reason = this.transactionReason) {
+      if (this.transactionDepth <= 0) return;
+      this.transactionDepth -= 1;
+      if (this.transactionDepth === 0) this.emit(reason || "transaction");
     }
 
     undo() {
@@ -218,6 +243,7 @@
       right.name = `${layer.name} corte`;
       right.start = this.currentTime;
       right.duration = rightDuration;
+      right.sourceIn = Number(layer.sourceIn || 0) + leftDuration;
       layer.duration = leftDuration;
       this.project.layers.push(right);
       this.selectedLayerId = right.id;
@@ -290,7 +316,7 @@
 
     visibleLayersAt(time = this.currentTime) {
       return this.project.layers
-        .filter((layer) => !layer.hidden && layer.type !== "audio" && time >= layer.start && time <= layer.start + layer.duration)
+        .filter((layer) => !layer.hidden && layer.type !== "audio" && time >= layer.start && time < layer.start + layer.duration)
         .sort((a, b) => (a.props?.z || 0) - (b.props?.z || 0));
     }
 
@@ -325,6 +351,18 @@
       }
       frames.sort((a, b) => a.time - b.time);
       if (!silent) this.emit("keyframe:add");
+    }
+
+    addAutoKeyframe(layerId, property, value, previousValue) {
+      const layer = this.layer(layerId);
+      if (!layer) return;
+      layer.animations = layer.animations || {};
+      const frames = (layer.animations[property] = layer.animations[property] || []);
+      const originTime = Number(layer.start || 0);
+      if (!frames.length && this.currentTime > originTime + .015) {
+        frames.push({ time:originTime, value:previousValue, ease:"easeInOut" });
+      }
+      this.addKeyframe(layerId, property, this.currentTime, value, true);
     }
 
     updateKeyframe(layerId, property, index, patch) {
@@ -490,6 +528,11 @@
       lightX: -180,
       lightY: -260,
       lightZ: 520,
+      svgColorMode: "original",
+      svgPrimary: "#8b48ff",
+      svgSecondary: "#ffffff",
+      svgStroke: "#151515",
+      svgStrokeWidth: 3,
       ...options.props,
     };
     const layer = {
@@ -499,12 +542,13 @@
       trackId: options.trackId || "track-video",
       start: Number(options.start ?? 0),
       duration: Number(options.duration ?? defaultDuration(type, media)),
+      sourceIn: Math.max(0, Number(options.sourceIn || 0)),
       durationUserEdited: Boolean(options.durationUserEdited),
       mediaId: options.mediaId || media?.id || null,
       props,
       animations: options.animations || {},
       effects: options.effects || {},
-      color: options.color || { brightness: 1, contrast: 1, saturation: 1, temperature: 0, grain: 0, chroma: 0 },
+      color: { exposure: 0, brightness: 1, contrast: 1, highlights: 0, shadows: 0, saturation: 1, vibrance: 0, temperature: 0, tint: 0, grain: 0, chroma: 0, ...(options.color || {}) },
       audio: options.audio || {
         volume: 1,
         fadeIn: 0,

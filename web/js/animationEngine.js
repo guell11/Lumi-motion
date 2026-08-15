@@ -94,13 +94,13 @@
     }
 
     ensureMotionPoint(layer, time, props) {
-      layer.motionPath = layer.motionPath || { type: "linear", points: [] };
+      layer.motionPath = layer.motionPath || { type: "autoBezier", points: [] };
       const points = layer.motionPath.points;
       // Auto-seed the origin point so path works immediately (needs >= 2 points)
       if (!points.length) {
         const originX = layer.props.x;
         const originY = layer.props.y;
-        const originTime = Math.max(0, time - 0.5);
+        const originTime = Math.max(0, Number(layer.start || 0));
         points.push({ time: originTime, x: originX, y: originY, ease: "easeInOut" });
         this.store.addKeyframe(layer.id, "x", originTime, originX, true);
         this.store.addKeyframe(layer.id, "y", originTime, originY, true);
@@ -113,6 +113,7 @@
         points.push({ time, x: props.x, y: props.y, ease: "easeInOut" });
       }
       points.sort((a, b) => a.time - b.time);
+      if (layer.motionPath.type === "autoBezier" && Editor.SvgLibrary) Editor.SvgLibrary.autoSmooth(points);
       this.store.addKeyframe(layer.id, "x", time, props.x, true);
       this.store.addKeyframe(layer.id, "y", time, props.y, true);
     }

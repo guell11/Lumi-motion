@@ -12,14 +12,19 @@
       this.ctx = this.canvas.getContext("2d");
       this.octx = this.overlay.getContext("2d");
       this.shell = $("#stageShell");
+      this.platformOverlay = $("#platformPreviewOverlay");
       this.scale = 1;
       this.resources = new Map();
+      this.svgResources = new Map();
       this.videoFrameCache = new Map();
       this.videoFrameRequests = new Set();
       this.videoFrameMediaRequests = new Set();
       this.videoFrameLastRequestAt = new Map();
       this.videoFrameFailures = new Map();
       this.drag = null;
+      this.marquee = null;
+      this.pendingPointerFrame = 0;
+      this.lastPointerEvent = null;
       this.recordDrag = null;
       this.threeText = new Editor.ThreeText3D(store);
       this.motion = new Editor.MotionPathEditor(store, this);
@@ -41,7 +46,7 @@
       $("#canvasZoom").addEventListener("input", () => this.resize());
       this.overlay.addEventListener("pointerdown", (event) => this.pointerDown(event));
       window.addEventListener("pointermove", (event) => this.pointerMove(event));
-      window.addEventListener("pointerup", () => this.pointerUp());
+      window.addEventListener("pointerup", (event) => this.pointerUp(event));
       this.overlay.addEventListener("dblclick", (event) => {
         const point = this.eventPoint(event);
         const hit = this.hitTest(point);
@@ -71,7 +76,18 @@
         node.style.width = `${settings.width * this.scale}px`;
         node.style.height = `${settings.height * this.scale}px`;
       }
+      requestAnimationFrame(() => this.positionPlatformOverlay());
       this.render();
+    }
+
+    positionPlatformOverlay() {
+      if (!this.platformOverlay || this.platformOverlay.hidden) return;
+      const canvasRect = this.overlay.getBoundingClientRect();
+      const shellRect = this.shell.getBoundingClientRect();
+      this.platformOverlay.style.left = `${canvasRect.left - shellRect.left}px`;
+      this.platformOverlay.style.top = `${canvasRect.top - shellRect.top}px`;
+      this.platformOverlay.style.width = `${canvasRect.width}px`;
+      this.platformOverlay.style.height = `${canvasRect.height}px`;
     }
 
     render(time = this.store.currentTime) {
@@ -173,7 +189,8 @@
 
       if (layer.type === "text") this.textAnimator.draw(ctx, layer, props, time);
       else if (layer.type === "shape") this.drawShape(ctx, layer, props);
-      else if (layer.type === "image" || layer.type === "svg") this.drawImage(ctx, layer, props);
+      else if (layer.type === "image") this.drawImage(ctx, layer, props);
+      else if (layer.type === "svg") this.drawSvg(ctx, layer, props);
       else if (layer.type === "video") this.drawVideo(ctx, layer, props, time);
 
       if (layer.effects?.glitch || layer.color?.chroma) this.drawGlitchEcho(ctx, layer, props);
@@ -251,10 +268,18 @@
     filterFor(layer, props) {
       const color = layer.color || {};
       const blur = Number(props.blur || layer.effects?.blur || color.blur || 0);
-      const brightness = Number(color.brightness || layer.effects?.brightness || 1);
-      const contrast = Number(color.contrast || 1);
-      const saturation = Number(color.saturation || 1);
-      return `blur(${blur}px) brightness(${brightness}) contrast(${contrast}) saturate(${saturation})`;
+      const exposure = Math.pow(2, Number(color.exposure || 0));
+      const tonalBalance = 1 + (Number(color.highlights || 0) + Number(color.shadows || 0) * 0.45) / 250;
+      const brightness = Number(color.brightness || layer.effects?.brightness || 1) * exposure * tonalBalance;
+      const contrast = Number(color.contrast || 1) * (1 + (Number(color.highlights || 0) - Number(color.shadows || 0)) / 500);
+      const saturation = Number(color.saturation || 1) * (1 + Number(color.vibrance || 0) / 180);
+      const temperature = Number(color.temperature || 0);
+      const tint = Number(color.tint || 0);
+      const sepia = Math.max(0, temperature) / 125;
+      const hue = tint * 0.7 - Math.max(0, -temperature) * 0.35;
+      if (blur === 0 && Math.abs(brightness - 1) < .0001 && Math.abs(contrast - 1) < .0001 &&
+          Math.abs(saturation - 1) < .0001 && sepia === 0 && hue === 0) return "none";
+      return `blur(${blur}px) brightness(${brightness}) contrast(${contrast}) saturate(${saturation}) sepia(${sepia}) hue-rotate(${hue}deg)`;
     }
 
     applyShadow(ctx, props, layer) {
@@ -335,11 +360,31 @@
       ctx.drawImage(image, -props.width / 2, -props.height / 2, props.width, props.height);
     }
 
+    drawSvg(ctx, layer, props) {
+      const media = this.store.media(layer.mediaId);
+      if (!media) return this.placeholder(ctx, props, "SVG");
+      if (!media.svgText || !Editor.SvgLibrary) return this.drawImage(ctx, layer, props);
+      const key = [media.id, props.svgColorMode, props.svgPrimary, props.svgSecondary, props.svgStroke, props.svgStrokeWidth].join(":");
+      let image = this.svgResources.get(key);
+      if (!image) {
+        image = new Image();
+        image.onload = () => this.render();
+        image.src = Editor.SvgLibrary.dataUrl(Editor.SvgLibrary.colorizeSvg(media.svgText, props));
+        this.svgResources.set(key, image);
+        if (this.svgResources.size > 80) this.svgResources.delete(this.svgResources.keys().next().value);
+      }
+      if (!image.complete || !image.naturalWidth) return this.placeholder(ctx, props, "SVG");
+      this.applyNaturalSize(layer, image.naturalWidth, image.naturalHeight);
+      props.width = layer.props.width;
+      props.height = layer.props.height;
+      ctx.drawImage(image, -props.width / 2, -props.height / 2, props.width, props.height);
+    }
+
     drawVideo(ctx, layer, props, time) {
       const media = this.store.media(layer.mediaId);
       if (!media) return this.placeholder(ctx, props, "Video");
       const video = this.resource(media, "video");
-      const local = Math.max(0, time - layer.start);
+      const local = Math.max(0, time - layer.start + Number(layer.sourceIn || 0));
 
       if (Number.isFinite(video.duration) && video.duration > 0 && !layer.durationUserEdited && !layer.props.mediaDurationSynced) {
         layer.duration = Math.max(0.1, video.duration);
@@ -573,6 +618,7 @@
         this.drawSelection(ctx, props);
       });
       this.motion.draw(ctx, this.scale);
+      if (this.marquee) this.drawMarquee(ctx);
       ctx.restore();
     }
 
@@ -581,15 +627,33 @@
       ctx.save();
       ctx.translate(props.x, props.y);
       ctx.rotate(((props.rotation || 0) * Math.PI) / 180);
-      ctx.strokeStyle = "#00c8d7";
+      ctx.strokeStyle = "#a979ff";
       ctx.lineWidth = 2 / scale;
       ctx.setLineDash([8 / scale, 4 / scale]);
       ctx.strokeRect(-props.width / 2, -props.height / 2, props.width, props.height);
       ctx.setLineDash([]);
       const handles = this.handles(props);
-      ctx.fillStyle = "#00c8d7";
+      ctx.fillStyle = "#a979ff";
       handles.forEach((handle) => ctx.fillRect(handle.x - 6 / scale, handle.y - 6 / scale, 12 / scale, 12 / scale));
       ctx.restore();
+    }
+
+    drawMarquee(ctx) {
+      const rect = this.marqueeRect();
+      ctx.save();
+      ctx.fillStyle = "rgba(169,121,255,.13)";
+      ctx.strokeStyle = "rgba(218,199,255,.95)";
+      ctx.lineWidth = 1.5 / this.scale;
+      ctx.setLineDash([7 / this.scale, 4 / this.scale]);
+      ctx.fillRect(rect.x, rect.y, rect.width, rect.height);
+      ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
+      ctx.restore();
+    }
+
+    marqueeRect() {
+      const a = this.marquee.start;
+      const b = this.marquee.current;
+      return { x:Math.min(a.x,b.x), y:Math.min(a.y,b.y), width:Math.abs(b.x-a.x), height:Math.abs(b.y-a.y) };
     }
 
     handles(props) {
@@ -603,73 +667,137 @@
 
     pointerDown(event) {
       if (this.textEditor && event.target === this.textEditor) return;
+      if (event.button !== 0) return;
       const point = this.eventPoint(event);
       if (this.motion.start(point, event)) return;
       const hit = this.hitTest(point);
       if (hit) {
-        this.store.setSelected(hit.layer.id);
+        this.overlay.setPointerCapture?.(event.pointerId);
+        if (event.shiftKey) {
+          const ids = new Set(this.store.selectedLayerIds || []);
+          if (ids.has(hit.layer.id)) ids.delete(hit.layer.id); else ids.add(hit.layer.id);
+          this.store.selectLayers(Array.from(ids));
+        } else if (!this.store.isSelected(hit.layer.id)) {
+          this.store.setSelected(hit.layer.id);
+        }
         if (hit.layer.locked) return;
-        this.drag = { type: hit.handle || "move", start: point, layerId: hit.layer.id, props: { ...hit.props } };
+        this.store.checkpoint();
+        const ids = hit.handle ? [hit.layer.id] : (this.store.selectedLayerIds.length ? this.store.selectedLayerIds : [hit.layer.id]);
+        const origins = ids.map((id) => this.store.layer(id)).filter((layer) => layer && !layer.locked).map((layer) => ({ id:layer.id, props:{ ...layer.props } }));
+        if (this.store.recordMotion && this.store.currentTime > hit.layer.start + .015) {
+          origins.forEach((origin) => {
+            const item = this.store.layer(origin.id);
+            item.motionPath = item.motionPath || { type:"autoBezier", points:[] };
+            if (!item.motionPath.points.length) item.motionPath.points.push({ time:item.start, x:origin.props.x, y:origin.props.y, ease:"easeInOut" });
+          });
+        }
+        this.drag = { type: hit.handle || "move", start: point, layerId: hit.layer.id, props: { ...hit.props }, origins, changed:false };
         if (this.store.recordMotion) this.beginRecordDrag(hit.layer, point);
       } else {
-        this.store.setSelected(null);
+        this.overlay.setPointerCapture?.(event.pointerId);
+        this.marquee = { start:point, current:point, baseIds:event.shiftKey ? [...this.store.selectedLayerIds] : [] };
+        if (!event.shiftKey) {
+          this.store.selectedLayerId = null;
+          this.store.selectedLayerIds = [];
+        }
+        this.drawOverlay();
       }
+      event.preventDefault();
     }
 
     pointerMove(event) {
+      if (!this.drag && !this.marquee && !this.motion.drag) return;
+      this.lastPointerEvent = event;
+      if (this.pendingPointerFrame) return;
+      this.pendingPointerFrame = requestAnimationFrame(() => {
+        this.pendingPointerFrame = 0;
+        const latest = this.lastPointerEvent;
+        this.lastPointerEvent = null;
+        if (latest) this.applyPointerMove(latest);
+      });
+    }
+
+    applyPointerMove(event) {
       const point = this.eventPoint(event);
       if (this.motion.move(point)) return;
+      if (this.marquee) {
+        this.marquee.current = point;
+        const rect = this.marqueeRect();
+        const inside = this.store.visibleLayersAt(this.store.currentTime).filter((layer) => {
+          const props = this.engine.propsAt(layer, this.store.currentTime);
+          const box = { x:props.x - props.width / 2, y:props.y - props.height / 2, width:props.width, height:props.height };
+          return rect.x < box.x + box.width && rect.x + rect.width > box.x && rect.y < box.y + box.height && rect.y + rect.height > box.y;
+        }).map((layer) => layer.id);
+        const ids = Array.from(new Set([...this.marquee.baseIds, ...inside]));
+        this.store.selectedLayerIds = ids;
+        this.store.selectedLayerId = ids[0] || null;
+        this.drawOverlay();
+        return;
+      }
       if (!this.drag) return;
       const layer = this.store.layer(this.drag.layerId);
       if (!layer) return;
       const dx = point.x - this.drag.start.x;
       const dy = point.y - this.drag.start.y;
-      if (this.store.recordMotion) this.advanceRecordingClock(point);
       const patch = { props: {} };
       if (this.drag.type === "move") {
-        patch.props.x = this.snap(this.drag.props.x + dx);
-        patch.props.y = this.snap(this.drag.props.y + dy);
-        this.store.updateLayer(layer.id, patch);
-        this.recordLayerProps(layer, patch.props, ["x", "y"], point);
+        this.drag.origins.forEach((origin) => {
+          const item = this.store.layer(origin.id);
+          if (!item) return;
+          const previous = { x:item.props.x, y:item.props.y };
+          item.props.x = this.snap(origin.props.x + dx);
+          item.props.y = this.snap(origin.props.y + dy);
+          if (this.store.recordMotion) {
+            this.store.addAutoKeyframe(item.id, "x", item.props.x, origin.props.x);
+            this.store.addAutoKeyframe(item.id, "y", item.props.y, origin.props.y);
+            this.engine.ensureMotionPoint(item, this.store.currentTime, item.props);
+          }
+        });
       } else {
         const next = this.resizeFromHandle(this.drag.type, this.drag.props, dx, dy, layer);
         patch.props = next;
-        this.store.updateLayer(layer.id, patch);
+        Object.assign(layer.props, next);
         const keys = ["width", "height"];
         if (layer.type === "text" || layer.type === "text3d") keys.push("fontSize");
-        this.recordLayerProps(layer, patch.props, keys, point);
+        if (this.store.recordMotion) keys.forEach((key) => this.store.addAutoKeyframe(layer.id, key, layer.props[key], this.drag.props[key]));
       }
-      this.render();
+      this.drag.changed = Math.abs(dx) > 1 || Math.abs(dy) > 1;
+      if (this.recordDrag && this.drag.changed) this.recordDrag.moved = true;
+      this.store.emit("canvas:drag-live");
     }
 
     pointerUp() {
+      if (this.pendingPointerFrame) {
+        cancelAnimationFrame(this.pendingPointerFrame);
+        this.pendingPointerFrame = 0;
+        const latest = this.lastPointerEvent;
+        this.lastPointerEvent = null;
+        if (latest) this.applyPointerMove(latest);
+      }
       this.motion.end();
+      if (this.marquee) {
+        const ids = [...this.store.selectedLayerIds];
+        this.marquee = null;
+        this.store.selectLayers(ids);
+        return;
+      }
       this.finishRecordDrag();
+      if (this.drag) {
+        if (!this.drag.changed) this.store.history.pop();
+        else this.store.emit("canvas:drag-commit");
+      }
       this.drag = null;
     }
 
     beginRecordDrag(layer, point) {
       this.recordDrag = {
         layerId: layer.id,
-        startedAt: performance.now(),
         timeStart: this.store.currentTime,
         startPoint: { ...point },
         lastRecorded: null,
         moved: false,
       };
       this.store.motionPath = true;
-    }
-
-    advanceRecordingClock(point) {
-      if (!this.recordDrag) return;
-      const moved = Math.hypot(point.x - this.recordDrag.startPoint.x, point.y - this.recordDrag.startPoint.y);
-      if (moved < 2) return;
-      const elapsed = Math.max(0, (performance.now() - this.recordDrag.startedAt) / 1000);
-      const fps = this.store.project.settings.fps || 30;
-      const nextTime = this.recordDrag.timeStart + elapsed;
-      if (Math.abs(nextTime - this.store.currentTime) >= 1 / Math.max(12, fps * 2)) {
-        this.store.setTime(nextTime);
-      }
     }
 
     recordLayerProps(layer, patchProps, properties, point) {

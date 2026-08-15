@@ -9,13 +9,29 @@
       this.templates = templates;
       this.panel = $("#panelContent");
       this.title = $("#panelTitle");
+      this.searchInput = $("#panelSearch");
+      this.searchQuery = "";
       this.active = "media";
       this.bind();
+      document.addEventListener("lumi:media-imported", (event) => this.receiveImportedMedia(event.detail));
     }
 
     bind() {
       $("#toolTabs").querySelectorAll("button").forEach((button) => {
         button.addEventListener("click", () => this.activatePanel(button.dataset.panel));
+      });
+      this.searchInput.setAttribute("aria-label", "Pesquisar no painel atual");
+      this.searchInput.setAttribute("aria-controls", "panelContent");
+      this.searchInput.addEventListener("input", () => {
+        this.searchQuery = normalizeSearch(this.searchInput.value);
+        this.applySearchFilter();
+      });
+      this.searchInput.addEventListener("keydown", (event) => {
+        if (event.key !== "Escape" || !this.searchInput.value) return;
+        event.preventDefault();
+        this.searchInput.value = "";
+        this.searchQuery = "";
+        this.applySearchFilter();
       });
     }
 
@@ -53,6 +69,52 @@
       else if (this.active === "adjust") this.renderAdjust();
       else this.renderMedia();
       this.bindSelectionContext();
+      this.applySearchFilter();
+    }
+
+    applySearchFilter() {
+      const previousStatus = this.panel.querySelector("#panelSearchStatus");
+      previousStatus?.remove();
+
+      const query = this.searchQuery;
+      const items = Array.from(this.panel.querySelectorAll(".media-card, .preset-card, .template-card, .chip"));
+      let matches = 0;
+      items.forEach((item) => {
+        const searchableText = normalizeSearch(`${item.dataset.search || ""} ${item.textContent || ""}`);
+        const visible = !query || searchableText.includes(query);
+        item.hidden = !visible;
+        item.setAttribute("aria-hidden", String(!visible));
+        if (visible) matches += 1;
+      });
+
+      this.panel.querySelectorAll(".empty:not([data-search-empty])").forEach((emptyState) => {
+        emptyState.hidden = Boolean(query);
+      });
+      if (!query) return;
+
+      const status = document.createElement("div");
+      status.id = "panelSearchStatus";
+      status.dataset.searchEmpty = "true";
+      status.setAttribute("role", "status");
+      status.setAttribute("aria-live", "polite");
+      if (!matches) {
+        status.className = "empty";
+        status.textContent = `Nenhum resultado para “${this.searchInput.value.trim()}”.`;
+      } else {
+        status.textContent = `${matches} resultado${matches === 1 ? "" : "s"}.`;
+        Object.assign(status.style, {
+          position: "absolute",
+          width: "1px",
+          height: "1px",
+          padding: "0",
+          margin: "-1px",
+          overflow: "hidden",
+          clip: "rect(0, 0, 0, 0)",
+          whiteSpace: "nowrap",
+          border: "0",
+        });
+      }
+      this.panel.appendChild(status);
     }
 
     renderMedia() {
@@ -105,21 +167,31 @@
 
     renderShapes() {
       const shapes = ["rect", "circle", "line", "arrow", "star", "polygon"];
+      const svgs = Editor.SvgLibrary?.items || [];
       this.panel.innerHTML = `
         ${this.selectionContext()}
         <div class="section-title">Shapes vetoriais</div>
         <div class="preset-grid">${shapes.map((shape) => `<div class="preset-card" data-shape="${shape}"><div class="preset-thumb">${shapeIcon(shape)}</div><div class="preset-name">${shape}</div></div>`).join("")}</div>
-        <div class="section-title">SVG</div>
-        <button id="importSvgBtn">Importar SVG</button>`;
+        <div class="section-title">Biblioteca SVG · ${svgs.length} vetores</div>
+        <div class="svg-grid">${svgs.map((asset) => `<div class="svg-card" draggable="true" data-svg-asset="${asset.id}" data-search="${asset.category}"><div class="svg-thumb">${Editor.SvgLibrary.colorizeSvg(asset.svg, { svgColorMode:"duotone", svgPrimary:"#8b48ff", svgSecondary:"#f3f3f3", svgStroke:"#171717", svgStrokeWidth:3 })}</div><span>${asset.name}</span></div>`).join("")}</div>
+        <div class="button-row svg-import-row"><button id="importSvgBtn">Importar meus SVGs</button></div>`;
       this.panel.querySelectorAll("[data-shape]").forEach((node) => {
         node.addEventListener("click", () => this.store.addLayer("shape", { props: { shape: node.dataset.shape } }));
+      });
+      this.panel.querySelectorAll("[data-svg-asset]").forEach((node) => {
+        node.addEventListener("click", () => Editor.SvgLibrary.add(this.store, node.dataset.svgAsset));
+        node.addEventListener("dragstart", (event) => {
+          event.dataTransfer.effectAllowed = "copy";
+          event.dataTransfer.setData("application/x-lumi-svg", node.dataset.svgAsset);
+          event.dataTransfer.setData("text/plain", `lumi-svg:${node.dataset.svgAsset}`);
+        });
       });
       $("#importSvgBtn").addEventListener("click", () => this.importMedia());
     }
 
     renderAnimations() {
       this.panel.innerHTML = `
-        <div class="button-row"><button id="recordMotionLibraryBtn" class="${this.store.recordMotion ? "primary" : ""}">${this.store.recordMotion ? "Parar gravacao" : "Gravar movimento"}</button><button id="clearMotionBtn">Limpar path</button></div>
+        <div class="button-row"><button id="recordMotionLibraryBtn" class="${this.store.recordMotion ? "primary" : ""}">${this.store.recordMotion ? "Desativar Auto Key" : "Ativar Auto Key"}</button><button id="smoothCursorBtn">Cursor suave + clique</button><button id="clearMotionBtn">Limpar path</button></div>
         ${this.selectionContext()}
         <div class="section-title">Camera</div>
         <div class="chip-list">${["Dolly in", "Dolly out", "Pan esquerda", "Pan direita", "Tilt dramatico", "Orbit 3D", "Camera shake"].map((name) => `<span class="chip" data-camera-preset="${name}">${name}</span>`).join("")}</div>
@@ -128,6 +200,10 @@
         <div class="section-title">Texto</div>
         <div class="preset-grid">${Editor.Presets.text.map((preset) => this.presetCard(preset)).join("")}</div>`;
       $("#recordMotionLibraryBtn").addEventListener("click", () => this.toggleRecording());
+      $("#smoothCursorBtn").addEventListener("click", () => {
+        Editor.SvgLibrary.createSmoothCursor(this.store);
+        toast("Cursor suave criado: caminho Auto Bezier e clique continuam editáveis.");
+      });
       $("#clearMotionBtn").addEventListener("click", () => {
         const layer = this.store.selectedLayer();
         if (!layer) return toast("Selecione uma camada.", "error");
@@ -243,7 +319,7 @@
           : item.type === "video"
             ? `<video src="${escapeAttr(item.url)}" muted preload="metadata" playsinline></video><span class="video-badge">Video</span>`
             : "Arquivo";
-      return `<div class="media-card" data-media="${escapeAttr(item.id)}"><div class="media-thumb">${thumb}</div><div class="media-name">${escapeHtml(item.name)}</div></div>`;
+      return `<div class="media-card" draggable="true" data-media="${escapeAttr(item.id)}" data-search="${escapeAttr(mediaSearchTerms(item.type))}"><div class="media-thumb">${thumb}</div><div class="media-name">${escapeHtml(item.name)}</div></div>`;
     }
 
     presetCard(preset) {
@@ -255,16 +331,36 @@
         node.addEventListener("click", () => {
           const media = this.store.media(node.dataset.media);
           if (!media) return;
-          const type = media.type === "audio" ? "audio" : media.type === "video" ? "video" : media.type === "svg" ? "svg" : "image";
-          const duration = type === "video" || type === "audio" ? Number(media.duration) || 5 : 5;
-          const layer = this.store.addLayer(type, { media, mediaId: media.id, name: media.name, duration });
-          if ((type === "video" || type === "audio") && Number(media.duration) > 0) {
-            layer.props.mediaDurationSynced = true;
-            this.store.ensureDuration(layer.start + layer.duration + 1);
-            this.store.emit("media:duration");
-          }
+          this.addMediaAsLayer(media);
+        });
+        node.addEventListener("dragstart", (event) => {
+          const media = this.store.media(node.dataset.media);
+          event.dataTransfer.effectAllowed = "copy";
+          event.dataTransfer.setData("application/x-lumi-media", node.dataset.media);
+          if (media?.type) event.dataTransfer.setData(`application/x-lumi-type-${media.type}`, "1");
+          event.dataTransfer.setData("text/plain", `lumi-media:${node.dataset.media}`);
         });
       });
+    }
+
+    addMediaAsLayer(media, start = this.store.currentTime, trackId = null) {
+      const type = media.type === "audio" ? "audio" : media.type === "video" ? "video" : media.type === "svg" ? "svg" : "image";
+      const duration = type === "video" || type === "audio" ? Number(media.duration) || 5 : 5;
+      const layer = this.store.addLayer(type, { media, mediaId:media.id, name:media.name, duration, start, ...(trackId ? { trackId } : {}) });
+      if ((type === "video" || type === "audio") && Number(media.duration) > 0) {
+        layer.props.mediaDurationSynced = true;
+        this.store.ensureDuration(layer.start + layer.duration + 1);
+        this.store.emit("media:duration");
+      }
+      return layer;
+    }
+
+    receiveImportedMedia(result) {
+      if (!result?.ok) return toast(result?.error || "Não foi possível importar os arquivos.", "error");
+      const items = result.media || [];
+      this.store.addMedia(items);
+      if (this.active !== "media") this.activatePanel("media");
+      toast(`${items.length} arquivo(s) importado(s). Arraste-os para a timeline.`);
     }
 
     bindPresetCards() {
@@ -286,7 +382,7 @@
           </div>
           <div class="context-actions">
             <button data-context-action="animation">Animar</button>
-            <button data-context-action="rec">${this.store.recordMotion ? "Parar REC" : "REC mov"}</button>
+            <button data-context-action="rec">${this.store.recordMotion ? "Auto Key on" : "Auto Key"}</button>
             <button data-context-action="round">Arredondar</button>
             <button data-context-action="fade">Fade</button>
             <button data-context-action="reset">Reset FX</button>
@@ -324,7 +420,7 @@
       this.store.recordMotion = !this.store.recordMotion;
       if (this.store.recordMotion) this.store.motionPath = true;
       this.store.emit("record:motion");
-      toast(this.store.recordMotion ? "REC ativo: arraste o elemento para gravar movimento." : "REC desativado.");
+      toast(this.store.recordMotion ? "Auto Key ativo: altere a propriedade no tempo atual." : "Auto Key desativado.");
     }
 
     async importMedia() {
@@ -341,6 +437,23 @@
 
   function tr(key) {
     return (Editor.t && Editor.t(key)) || key;
+  }
+
+  function normalizeSearch(value) {
+    return String(value || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLocaleLowerCase();
+  }
+
+  function mediaSearchTerms(type) {
+    return {
+      image: "imagem image foto photo",
+      video: "video filme movie clip",
+      audio: "audio som sound musica music",
+      svg: "svg vetor vector",
+      font: "fonte font tipografia typography",
+    }[type] || "arquivo file";
   }
 
   function escapeHtml(value) {

@@ -1,12 +1,32 @@
 (function () {
   const Editor = (window.Editor = window.Editor || {});
 
+  const panelDocuments = new Set();
   const Utils = {
     $(selector, root = document) {
-      return root.querySelector(selector);
+      const found = root.querySelector(selector);
+      if (found || root !== document) return found;
+      for (const panelDocument of panelDocuments) {
+        try {
+          const detached = panelDocument.querySelector(selector);
+          if (detached) return detached;
+        } catch {}
+      }
+      return null;
     },
     $$(selector, root = document) {
-      return Array.from(root.querySelectorAll(selector));
+      const found = Array.from(root.querySelectorAll(selector));
+      if (root !== document) return found;
+      for (const panelDocument of panelDocuments) {
+        try { found.push(...panelDocument.querySelectorAll(selector)); } catch {}
+      }
+      return found;
+    },
+    registerPanelDocument(panelDocument) {
+      if (panelDocument) panelDocuments.add(panelDocument);
+    },
+    unregisterPanelDocument(panelDocument) {
+      panelDocuments.delete(panelDocument);
     },
     on(target, event, handler, options) {
       target.addEventListener(event, handler, options);

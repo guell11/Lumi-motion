@@ -1,6 +1,6 @@
 (function () {
   const Editor = (window.Editor = window.Editor || {});
-  const { $, clamp } = Editor.Utils;
+  const { $, $$, clamp } = Editor.Utils;
 
   class PropertiesPanel {
     constructor(store, audioEngine) {
@@ -12,9 +12,9 @@
     }
 
     bind() {
-      document.querySelectorAll(".right-tabs button").forEach((button) => {
+      $$(".right-tabs button").forEach((button) => {
         button.addEventListener("click", () => {
-          document.querySelectorAll(".right-tabs button").forEach((item) => item.classList.remove("active"));
+          $$(".right-tabs button").forEach((item) => item.classList.remove("active"));
           button.classList.add("active");
           this.activeTab = button.dataset.right;
           this.render();
@@ -98,6 +98,15 @@
           this.rangeInput("Stroke", props.strokeWidth, 0, 32, 1, (value) => this.setProp(layer, "strokeWidth", value), "strokeWidth"),
         ]);
       }
+      if (layer.type === "svg") {
+        this.group("Cores do SVG", [
+          this.selectInput("Modo", props.svgColorMode || "original", ["original", "duotone", "mono"], (value) => this.setProp(layer, "svgColorMode", value), "svgColorMode"),
+          this.colorInput("Primaria", props.svgPrimary || "#8b48ff", (value) => this.setProp(layer, "svgPrimary", value), "svgPrimary"),
+          this.colorInput("Secundaria", props.svgSecondary || "#ffffff", (value) => this.setProp(layer, "svgSecondary", value), "svgSecondary"),
+          this.colorInput("Contorno", props.svgStroke || "#151515", (value) => this.setProp(layer, "svgStroke", value), "svgStroke"),
+          this.rangeInput("Espessura", props.svgStrokeWidth ?? 3, 0, 24, .5, (value) => this.setProp(layer, "svgStrokeWidth", value), "svgStrokeWidth"),
+        ]);
+      }
       this.mountGroups();
     }
 
@@ -112,14 +121,14 @@
       const isTextLayer = layer.type === "text";
       this.panel.innerHTML = `
         <div class="prop-group rec-group ${recOn ? "rec-active" : ""}">
-          <h3>⏺ Gravacao de animacao</h3>
+          <h3>◆ Auto Keyframe</h3>
           <button id="recordMotionPanelBtn" class="rec-btn ${recOn ? "recording" : ""}">
             <span class="rec-dot"></span>
-            ${recOn ? "⏹ PARAR GRAVACAO" : "⏺ INICIAR GRAVACAO"}
+            ${recOn ? "DESATIVAR AUTO KEY" : "ATIVAR AUTO KEY"}
           </button>
           <p class="muted">${recOn
-            ? "✅ Gravando! Mova o tempo na timeline, depois arraste o elemento ou altere propriedades. Cada mudanca cria um keyframe automaticamente."
-            : "Ative para gravar keyframes. Mova o tempo → mude posicao/escala/rotacao → keyframes sao criados no tempo atual."
+            ? "Ativo. Mova o playhead e altere posição, escala, rotação ou outra propriedade; o valor é gravado exatamente nesse tempo."
+            : "Fluxo estilo After Effects: ative, mova o playhead e mude uma propriedade. O primeiro valor é preservado e o novo vira keyframe."
           }</p>
           ${recOn ? `<div class="button-row">
             <button id="recAddPosBtn">+ Pos X/Y</button>
@@ -158,6 +167,7 @@
           <div class="button-row">
             <button id="linearPathBtn">Linear</button>
             <button id="curvePathBtn">Bezier</button>
+            <button id="autoPathBtn">Auto Bezier</button>
             <button id="freePathBtn">Livre</button>
             <button id="clearMotionPanelBtn">Limpar</button>
           </div>
@@ -252,6 +262,7 @@
       });
       this.panel.querySelector("#linearPathBtn").addEventListener("click", () => this.setPathType(layer, "linear"));
       this.panel.querySelector("#curvePathBtn").addEventListener("click", () => this.setPathType(layer, "bezier"));
+      this.panel.querySelector("#autoPathBtn").addEventListener("click", () => this.setPathType(layer, "autoBezier"));
       this.panel.querySelector("#freePathBtn").addEventListener("click", () => this.setPathType(layer, "free"));
       this.panel.querySelector("#clearMotionPanelBtn").addEventListener("click", () => {
         layer.motionPath = { type: "linear", points: [] };
@@ -425,21 +436,21 @@
     renderAudio(layer) {
       this.panel.innerHTML = "";
       this.group("Audio", [
-        this.rangeInput("Volume", layer.audio.volume, 0, 2, 0.01, (value) => (layer.audio.volume = value)),
-        this.rangeInput("Fade-in", layer.audio.fadeIn, 0, 8, 0.1, (value) => (layer.audio.fadeIn = value)),
-        this.rangeInput("Fade-out", layer.audio.fadeOut, 0, 8, 0.1, (value) => (layer.audio.fadeOut = value)),
-        this.rangeInput("Velocidade", layer.audio.speed ?? 1, 0.5, 2, 0.01, (value) => (layer.audio.speed = value)),
-        this.rangeInput("Pitch", layer.audio.pitch ?? 0, -12, 12, 1, (value) => (layer.audio.pitch = value)),
-        this.rangeInput("Pan", layer.audio.pan ?? 0, -1, 1, 0.01, (value) => (layer.audio.pan = value)),
-        this.rangeInput("Graves", layer.audio.low ?? 0, -18, 18, 1, (value) => (layer.audio.low = value)),
-        this.rangeInput("Medios", layer.audio.mid ?? 0, -18, 18, 1, (value) => (layer.audio.mid = value)),
-        this.rangeInput("Agudos", layer.audio.high ?? 0, -18, 18, 1, (value) => (layer.audio.high = value)),
-        this.rangeInput("Reverb", layer.audio.reverb ?? 0, 0, 1, 0.01, (value) => (layer.audio.reverb = value)),
-        this.checkboxInput("Normalizar", layer.audio.normalize, (value) => (layer.audio.normalize = value)),
-        this.checkboxInput("Aprimorar voz", layer.audio.enhance, (value) => (layer.audio.enhance = value)),
-        this.checkboxInput("Reduzir ruido", layer.audio.reduceNoise, (value) => (layer.audio.reduceNoise = value)),
-        this.checkboxInput("Compressor", layer.audio.compressor, (value) => (layer.audio.compressor = value)),
-        this.checkboxInput("Limiter", layer.audio.limiter, (value) => (layer.audio.limiter = value)),
+        this.rangeInput("Volume", layer.audio.volume, 0, 2, 0.01, (value) => this.setAudioProp(layer, "volume", value)),
+        this.rangeInput("Fade-in", layer.audio.fadeIn, 0, 8, 0.1, (value) => this.setAudioProp(layer, "fadeIn", value)),
+        this.rangeInput("Fade-out", layer.audio.fadeOut, 0, 8, 0.1, (value) => this.setAudioProp(layer, "fadeOut", value)),
+        this.rangeInput("Velocidade", layer.audio.speed ?? 1, 0.5, 2, 0.01, (value) => this.setAudioProp(layer, "speed", value)),
+        this.rangeInput("Pitch", layer.audio.pitch ?? 0, -12, 12, 1, (value) => this.setAudioProp(layer, "pitch", value)),
+        this.rangeInput("Pan", layer.audio.pan ?? 0, -1, 1, 0.01, (value) => this.setAudioProp(layer, "pan", value)),
+        this.rangeInput("Graves", layer.audio.low ?? 0, -18, 18, 1, (value) => this.setAudioProp(layer, "low", value)),
+        this.rangeInput("Medios", layer.audio.mid ?? 0, -18, 18, 1, (value) => this.setAudioProp(layer, "mid", value)),
+        this.rangeInput("Agudos", layer.audio.high ?? 0, -18, 18, 1, (value) => this.setAudioProp(layer, "high", value)),
+        this.rangeInput("Reverb", layer.audio.reverb ?? 0, 0, 1, 0.01, (value) => this.setAudioProp(layer, "reverb", value)),
+        this.checkboxInput("Normalizar", layer.audio.normalize, (value) => (layer.audio.normalize = value), "prop:audio:normalize"),
+        this.checkboxInput("Aprimorar voz", layer.audio.enhance, (value) => (layer.audio.enhance = value), "prop:audio:enhance"),
+        this.checkboxInput("Reduzir ruido", layer.audio.reduceNoise, (value) => (layer.audio.reduceNoise = value), "prop:audio:reduceNoise"),
+        this.checkboxInput("Compressor", layer.audio.compressor, (value) => (layer.audio.compressor = value), "prop:audio:compressor"),
+        this.checkboxInput("Limiter", layer.audio.limiter, (value) => (layer.audio.limiter = value), "prop:audio:limiter"),
         this.buttonRow(layer.type === "video" ? [["Separar audio", () => this.audioEngine.separateSelectedAudio()]] : [["Marcador de beat", () => this.store.addMarker()]]),
       ]);
       this.mountGroups();
@@ -449,14 +460,48 @@
       layer.color = layer.color || {};
       this.panel.innerHTML = "";
       this.group("Color grading", [
-        this.rangeInput("Brilho", layer.color.brightness ?? 1, 0.2, 2, 0.01, (value) => (layer.color.brightness = value)),
-        this.rangeInput("Contraste", layer.color.contrast ?? 1, 0.2, 2.5, 0.01, (value) => (layer.color.contrast = value)),
-        this.rangeInput("Saturacao", layer.color.saturation ?? 1, 0, 2.5, 0.01, (value) => (layer.color.saturation = value)),
-        this.rangeInput("Temperatura", layer.color.temperature ?? 0, -50, 50, 1, (value) => (layer.color.temperature = value)),
-        this.rangeInput("Grao", layer.color.grain ?? 0, 0, 1, 0.01, (value) => (layer.color.grain = value)),
-        this.rangeInput("Aberracao", layer.color.chroma ?? 0, 0, 12, 0.1, (value) => (layer.color.chroma = value)),
+        this.rangeInput("Exposicao", layer.color.exposure ?? 0, -3, 3, 0.05, (value) => this.setColorProp(layer, "exposure", value)),
+        this.rangeInput("Brilho", layer.color.brightness ?? 1, 0.2, 2, 0.01, (value) => this.setColorProp(layer, "brightness", value)),
+        this.rangeInput("Contraste", layer.color.contrast ?? 1, 0.2, 2.5, 0.01, (value) => this.setColorProp(layer, "contrast", value)),
+        this.rangeInput("Realces", layer.color.highlights ?? 0, -100, 100, 1, (value) => this.setColorProp(layer, "highlights", value)),
+        this.rangeInput("Sombras", layer.color.shadows ?? 0, -100, 100, 1, (value) => this.setColorProp(layer, "shadows", value)),
+        this.rangeInput("Saturacao", layer.color.saturation ?? 1, 0, 2.5, 0.01, (value) => this.setColorProp(layer, "saturation", value)),
+        this.rangeInput("Vibrancia", layer.color.vibrance ?? 0, -100, 100, 1, (value) => this.setColorProp(layer, "vibrance", value)),
+        this.rangeInput("Temperatura", layer.color.temperature ?? 0, -50, 50, 1, (value) => this.setColorProp(layer, "temperature", value)),
+        this.rangeInput("Matiz", layer.color.tint ?? 0, -50, 50, 1, (value) => this.setColorProp(layer, "tint", value)),
+        this.rangeInput("Grao", layer.color.grain ?? 0, 0, 1, 0.01, (value) => this.setColorProp(layer, "grain", value)),
+        this.rangeInput("Aberracao", layer.color.chroma ?? 0, 0, 12, 0.1, (value) => this.setColorProp(layer, "chroma", value)),
+      ]);
+      this.group("Looks rapidos", [
+        this.buttonRow([
+          ["Auto", () => this.applyColorLook(layer, "auto")],
+          ["Cinema", () => this.applyColorLook(layer, "cinema")],
+          ["Clean", () => this.applyColorLook(layer, "clean")],
+          ["Reset", () => this.applyColorLook(layer, "reset")],
+        ]),
       ]);
       this.mountGroups();
+    }
+
+    applyColorLook(layer, look) {
+      const looks = {
+        auto: { exposure: 0.12, brightness: 1.03, contrast: 1.08, saturation: 1.06, vibrance: 12, temperature: 2 },
+        cinema: { exposure: -0.08, brightness: 0.98, contrast: 1.18, saturation: 0.9, vibrance: 16, temperature: 8, tint: -3, grain: 0.08 },
+        clean: { exposure: 0.18, brightness: 1.06, contrast: 1.04, saturation: 1.02, vibrance: 8, temperature: 0, tint: 0, grain: 0 },
+        reset: { exposure: 0, brightness: 1, contrast: 1, highlights: 0, shadows: 0, saturation: 1, vibrance: 0, temperature: 0, tint: 0, grain: 0, chroma: 0 },
+      };
+      Object.assign(layer.color, looks[look] || looks.reset);
+      this.store.emit("color:look");
+    }
+
+    setAudioProp(layer, property, value) {
+      layer.audio[property] = value;
+      this.store.emit(`prop:audio:${property}`);
+    }
+
+    setColorProp(layer, property, value) {
+      layer.color[property] = value;
+      this.store.emit(`prop:color:${property}`);
     }
 
     renderGraph(layer) {
@@ -513,25 +558,35 @@
     }
 
     setProp(layer, property, value) {
+      const previous = layer.props[property];
       layer.props[property] = value;
       if (this.store.recordMotion) {
-        this.store.addKeyframe(layer.id, property, this.store.currentTime, value, true);
-        if (property === "x" || property === "y") this.addMotionPoint(layer);
+        this.store.addAutoKeyframe(layer.id, property, value, previous);
+        if (property === "x" || property === "y") this.addMotionPoint(layer, property, previous);
       }
       this.store.emit(`prop:${property}`);
     }
 
-    addMotionPoint(layer) {
-      layer.motionPath = layer.motionPath || { type: "linear", points: [] };
+    addMotionPoint(layer, changedProperty, previousValue) {
+      layer.motionPath = layer.motionPath || { type: "autoBezier", points: [] };
       const time = this.store.currentTime;
       const point = layer.motionPath.points.find((item) => Math.abs(item.time - time) < 0.015);
       if (point) {
         point.x = layer.props.x;
         point.y = layer.props.y;
       } else {
+        if (!layer.motionPath.points.length && time > layer.start + .015) {
+          layer.motionPath.points.push({
+            time:layer.start,
+            x:changedProperty === "x" ? previousValue : layer.props.x,
+            y:changedProperty === "y" ? previousValue : layer.props.y,
+            ease:"easeInOut",
+          });
+        }
         layer.motionPath.points.push({ time, x: layer.props.x, y: layer.props.y, ease: "easeInOut" });
       }
       layer.motionPath.points.sort((a, b) => a.time - b.time);
+      if (layer.motionPath.type === "autoBezier" && Editor.SvgLibrary) Editor.SvgLibrary.autoSmooth(layer.motionPath.points);
     }
 
     setPathType(layer, type) {
@@ -543,6 +598,7 @@
           point.handleOut = point.handleOut || { x: 80, y: 0 };
         });
       }
+      if (type === "autoBezier" && Editor.SvgLibrary) Editor.SvgLibrary.autoSmooth(layer.motionPath.points);
       this.store.emit("motion:type");
     }
 
@@ -648,7 +704,7 @@
       return row;
     }
 
-    checkboxInput(label, value, setter) {
+    checkboxInput(label, value, setter, reason = "checkbox") {
       const row = document.createElement("div");
       row.className = "prop-row two";
       row.innerHTML = `<label>${label}</label>`;
@@ -657,7 +713,7 @@
       input.checked = Boolean(value);
       input.addEventListener("change", () => {
         setter(input.checked);
-        this.store.emit("checkbox");
+        this.store.emit(reason);
       });
       row.appendChild(input);
       return row;
