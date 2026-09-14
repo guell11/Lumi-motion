@@ -44,7 +44,8 @@ No remote server is required. The editor runs locally.
 
 ## Preview
 
-![Lumi Motion Editor](https://github.com/user-attachments/assets/728fc610-a061-4b0b-9ed3-204bd1842746)
+<img width="1459" height="900" alt="image" src="https://github.com/user-attachments/assets/753a67e0-5c83-481f-9ed4-e5839baca3de" />
+
 
 ---
 
