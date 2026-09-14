@@ -1,262 +1,255 @@
-# Lumi Motion Video Editor
+# Lumi Motion
 
-Lumi Motion e um editor desktop de video/motion graphics feito com PyQt6 + QWebEngineView. A interface roda em HTML/CSS/JS e conversa com Python por `QWebChannel`. O backend salva projetos, importa arquivos locais e exporta via FFmpeg.
+Editor desktop de vídeo e motion graphics construído com PyQt6, QWebEngine, HTML Canvas, JavaScript e FFmpeg. O Lumi combina uma interface web local com acesso nativo a arquivos, projetos e janelas do sistema operacional.
 
-Dê uma conferida na landing page feita com muito ❤️: https://guell11.github.io/Lumi-motion/
+Landing page: https://guell11.github.io/Lumi-motion/
 
+> O projeto está em desenvolvimento ativo. A documentação abaixo diferencia os recursos implementados das limitações conhecidas para facilitar manutenção e planejamento.
 
-<img width="2549" height="1361" alt="Captura de tela 2026-05-01 210030" src="https://github.com/user-attachments/assets/728fc610-a061-4b0b-9ed3-204bd1842746" />
+## O que já é possível fazer
 
+### Edição e composição
 
+- Importar vários vídeos, imagens, áudios, GIFs, SVGs e fontes de uma vez.
+- Arrastar mídia da biblioteca diretamente para uma pista compatível da timeline.
+- Selecionar, mover, redimensionar e rotacionar elementos no canvas.
+- Selecionar vários elementos com uma caixa de seleção no canvas ou na timeline.
+- Mover vários clips selecionados preservando a distância temporal entre eles.
+- Trabalhar com texto 2D, texto 3D, formas, mídia e elementos SVG.
+- Editar texto diretamente no canvas com duplo clique.
+- Controlar ordem Z, opacidade, blur, blend mode, máscaras, stroke e sombras.
 
-## Como rodar
+### Timeline
 
-```powershell
-cd "C:\Users\guell\Documents\video editor"
-python -m pip install -r requirements.txt
-python app.py
-```
+- Pistas estáveis para vídeo, texto, shapes/SVG e áudio.
+- Vários clips na mesma pista, sem criar uma lane por camada.
+- Drag incremental com `requestAnimationFrame`, sem reconstruir toda a timeline a cada pixel.
+- Seleção múltipla por `Shift`, `Ctrl+A` e marquee, como na área de trabalho.
+- Trim pelas bordas preservando `sourceIn` da mídia.
+- Split no playhead, duplicação, exclusão, união e marcadores de beat.
+- Snapping em bordas, playhead e marcadores, com guia visual.
+- Zoom centrado no cursor, ajuste à largura e auto-scroll durante drag.
+- Pistas com bloqueio e visibilidade.
+- Timeline redimensionável, recolhível e destacável em outra janela/monitor.
 
-Tambem existe o atalho:
+### Animação e motion design
+
+- Keyframes por propriedade com interpolação e easing.
+- Auto Key: mova o playhead e altere uma propriedade para criar ou atualizar o keyframe naquele tempo.
+- Caminhos de movimento lineares e Bezier editáveis no canvas.
+- Presets de entrada, saída, escala, rotação, shake, glow, glitch, 3D e texto animado.
+- Animações de câmera: pan, dolly, zoom, roll, tilt, FOV e presets de movimento.
+- Animações de cursor, clique, hover, arraste, swipe e demonstrações de interface.
+- Texto animado por letra ou palavra, incluindo typewriter, bounce, glitch, neon, blur, scramble e wave.
+
+### Templates e formatos sociais
+
+- 63 templates transacionais de motion graphics em 11 categorias.
+- Lower thirds, openers, captions, logo reveals, callouts, scoreboards, end cards e sistemas de identidade.
+- Packs de produto, evento, creator, podcast e tecnologia.
+- Templates de cursor/clique e demonstração de interações.
+- Composições para TikTok, Reels, Stories, Shorts, feed 1:1 e feed 4:5.
+- Formatos de projeto 16:9, 9:16, 1:1 e 4:5.
+- Preview opcional de interface e safe zones de TikTok, Reels e Shorts; o overlay é apenas de referência e não entra no arquivo exportado.
+- Aplicação de template em uma transação: um único Undo remove toda a composição criada.
+
+### SVG e cor
+
+- Biblioteca interna de SVGs para cursores, cliques, setas, badges, logos e elementos de interface.
+- Importação de SVG externo como mídia.
+- Recolorização em três modos: original, monocromático e duotone.
+- Cores primária/secundária, stroke e espessura configuráveis.
+- Ajustes de exposição, brilho, contraste, highlights, shadows, saturação, vibrance, temperatura, tint, grain e chroma.
+
+### Áudio
+
+- Áudio separado ou faixa de áudio de clips de vídeo.
+- Volume, fade-in, fade-out, velocidade, pitch e pan.
+- EQ de graves, médios e agudos, reverb, compressor e limiter.
+- Normalização, enhancement e redução de ruído no pipeline FFmpeg.
+- Extração de áudio de vídeo e geração de áudio de preview.
+
+### Interface e múltiplos monitores
+
+- Layout em três áreas: biblioteca, player e inspetor, com timeline inferior.
+- Painéis laterais e timeline redimensionáveis; inspetor recolhível.
+- Player, timeline e inspetor podem ser destacados em janelas nativas.
+- A janela destacada pode ser arrastada para outro monitor e acoplada novamente.
+- Busca por mídia, presets, templates e elementos com normalização de acentos.
+- Tema grafite sólido, com foco em legibilidade e custo gráfico baixo.
+- Modos de acessibilidade do sistema para movimento, transparência, contraste e cores forçadas.
+
+### Projeto e exportação
+
+- Projetos JSON com extensão `.lumi.json`.
+- Hub para projeto novo, abertura e lista de projetos recentes.
+- Autosave a cada 10 segundos após criar ou abrir um projeto.
+- Exportação MP4/H.264 e GIF por sequência de PNGs + FFmpeg.
+- Resoluções 720p, 1080p e 4K; 24, 30 e 60 fps; bitrate configurável.
+- Mix de áudio com trim, atraso na timeline, fades e filtros.
+
+## Captura de tela
+
+![Interface do Lumi Motion](https://github.com/user-attachments/assets/728fc610-a061-4b0b-9ed3-204bd1842746)
+
+## Requisitos
+
+- Windows 10/11 recomendado.
+- Python 3.11 ou mais recente.
+- PyQt6 e PyQt6-WebEngine 6.7+.
+- FFmpeg para exportação final, áudio de vídeo e thumbnails.
+- GPU com suporte a aceleração Chromium/WebGL recomendada para texto 3D e projetos pesados.
+
+## Instalação e execução no Windows
+
+Instale o [Python 3.11 ou mais recente](https://www.python.org/downloads/windows/) e marque `Add Python to PATH` durante a instalação. Depois, dê duplo clique em `run_editor.bat` ou execute:
 
 ```powershell
 .\run_editor.bat
 ```
 
-## FFmpeg
+O launcher:
 
-Para exportar MP4/GIF e separar audio, coloque `ffmpeg.exe` no PATH ou em uma destas pastas:
+1. Procura Python pelo `py`, `python` ou `python3`.
+2. Cria o ambiente isolado `.venv` na primeira execução.
+3. Instala os pacotes de `requirements.txt` quando necessário.
+4. Abre o editor e mantém mensagens de erro visíveis caso algo falhe.
 
-- `tools/ffmpeg/bin/ffmpeg.exe`
-- `tools/ffmpeg/ffmpeg.exe`
-- `ffmpeg.exe` na raiz do projeto
+Na primeira execução é necessário acesso à internet para baixar PyQt6. O Python não vem incluído no repositório.
 
-Se `ffprobe.exe` estiver junto, o app tambem detecta duracao de audio/video importados.
+### Execução manual
 
-## Hub inicial
+```powershell
+git clone https://github.com/guell11/Lumi-motion.git
+cd Lumi-motion
+py -3 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r .\requirements.txt
+python .\app.py
+```
 
-Antes do editor abrir, aparece o hub:
+Se o PowerShell bloquear `Activate.ps1`, não é necessário alterar a política de execução. Use os executáveis diretamente:
 
-- `Novo projeto`: cria uma timeline vazia.
-- `Abrir projeto`: abre um arquivo `.lumi.json`.
-- `Projetos recentes`: lista projetos em `projects/` e autosaves em `autosaves/`.
-- `Idioma`: alterna Portugues e Ingles.
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r .\requirements.txt
+.\.venv\Scripts\python.exe .\app.py
+```
 
-O autosave so comeca depois de criar ou abrir um projeto.
+O editor abre a interface local em `web/index.html`; nenhuma conexão com servidor é necessária.
 
-## Interface
+### FFmpeg
 
-- Barra superior: paineis de Midia, Audio, Texto, Stickers, Animacoes, Efeitos, Transicoes, Filtros, Ajuste e Modelos.
-- Painel esquerdo: biblioteca, presets e templates.
-- Preview central: canvas de composicao.
-- Painel direito: propriedades, animacao, audio, cor, curva e camera.
-- Timeline inferior: lanes por camada, clips, playhead, zoom e ferramentas de corte.
+O app procura o executável nesta ordem:
 
-## Funcoes principais
+1. `ffmpeg` disponível no `PATH`.
+2. `tools/ffmpeg/bin/ffmpeg.exe`.
+3. `tools/ffmpeg/ffmpeg.exe`.
+4. `ffmpeg.exe` na raiz do projeto.
+5. Binário fornecido por `imageio-ffmpeg`.
 
-### Projetos
+O `ffprobe` segue busca semelhante para duração e presença de áudio. Sem FFmpeg, a edição visual abre normalmente, mas exportação final, extração de áudio e geração de alguns previews ficam indisponíveis.
 
-- Salvar projeto em `.lumi.json`.
-- Abrir projeto.
-- Autosave a cada 10 segundos em `autosaves/`.
-- Projetos recentes no hub.
+### Fallback de renderização
 
-### Midia
+A aceleração de GPU fica ligada por padrão. Em máquinas com driver Chromium incompatível, use renderização por software apenas para diagnóstico:
 
-- Importar video, imagem, audio, GIF, SVG e fontes.
-- Adicionar midia na timeline clicando no card.
-- Imagens e videos entram mantendo proporcao natural.
-- Handles no canvas redimensionam mantendo proporcao para midia.
+```powershell
+$env:LUMI_SOFTWARE_RENDERING = "1"
+python app.py
+```
 
-### Canvas / Preview
+Esse modo é mais lento e não deve ser o padrão em uma GPU funcional.
 
-- Selecionar elementos com clique.
-- Mover elementos arrastando.
-- Redimensionar pelos quadrados de canto.
-- Para texto, redimensionar tambem altera o tamanho da fonte.
-- Grid, snap e caminho de movimento podem ser ligados/desligados.
-- Zoom do canvas no controle inferior.
+## Fluxo básico
 
-### Texto
-
-- Criar texto 2D.
-- Criar texto 3D.
-- Duplo clique no texto edita diretamente no local.
-- `Enter` confirma a edicao.
-- `Esc` cancela a edicao.
-- Espaco funciona normalmente durante a digitacao.
-- Propriedades: conteudo, fonte, tamanho, cor, stroke, sombra, alinhamento e espacamento.
-
-### Texto 3D
-
-- Renderizado com Three.js local em `web/vendor/three.module.js`.
-- Propriedades: profundidade, bevel, metalness, roughness, luz X/Y/Z, rotacao X/Y/Z e escala.
-- Aceita keyframes e presets como qualquer camada.
-
-### Timeline
-
-- Pistas reais agrupam vários clips do mesmo tipo sem criar uma lane por camada.
-- Arraste estável com atualização incremental, auto-scroll e Undo em uma única operação.
-- Snapping visual em bordas de clips, playhead e marcadores.
-- Zoom centrado no cursor, ajuste do projeto à largura e timeline redimensionável/recolhível.
-- Seleção múltipla com Shift e ferramentas Selecionar/Lâmina.
-- Arrastar clip move no tempo.
-- Handles laterais cortam duração preservando o ponto de entrada da mídia.
-- Playhead pode ser clicado ou arrastado para voltar/avancar.
-- `Cortar`, `Unir`, `Duplicar`, `Excluir` e `Beat`.
-- Zoom da timeline.
-
-### Animacoes
-
-- Keyframes por propriedade.
-- REC mov: grava movimento somente quando ligado.
-- Sem REC, arrastar so move o elemento.
-- Caminho de movimento com pontos.
-- Duplo clique no canvas adiciona ponto de caminho.
-- Shift + duplo clique cria handles Bezier.
-- Alt + duplo clique remove ponto.
-- Velocidade de animacao por camada.
-- Presets: fade, flash, glow, zoom, shake, rotate, slide, pop, 3D flip, giro 3D e mais.
-
-### Texto animado
-
-- Typewriter.
-- Letra por letra.
-- Palavra por palavra.
-- Bounce, glitch, neon, blur, scramble, wave e outros.
-
-### Camera
-
-A aba `Camera` controla a camera global da cena:
-
-- Pan X/Y.
-- Dolly Z.
-- Zoom.
-- Roll.
-- Tilt X/Y.
-- FOV para texto 3D.
-
-Presets:
-
-- Dolly in.
-- Dolly out.
-- Pan esquerda.
-- Pan direita.
-- Tilt dramatico.
-- Orbit 3D.
-- Camera shake.
-
-### Audio
-
-- Importar audio.
-- Separar audio de video usando FFmpeg.
-- Volume.
-- Fade-in/fade-out.
-- Velocidade.
-- Pitch.
-- Pan stereo.
-- EQ de graves, medios e agudos.
-- Reverb.
-- Compressor.
-- Limiter.
-- Normalizar.
-- Reduzir ruido.
-- Marcadores de beat.
-
-### Efeitos, filtros e ajustes
-
-- Blur.
-- Glow.
-- Glitch.
-- RGB split/chromatic aberration.
-- Grain/noise.
-- Vinheta.
-- Brilho, contraste, saturacao e temperatura.
-- Filtros prontos como preto e branco, filme antigo, cyber neon e clean comercial.
-
-### Templates
-
-- 29 composições prontas em 8 categorias.
-- Lower thirds, openers, captions e logo reveals.
-- Callouts, métricas, pacotes vertical/social e end cards.
-- Metadados de proporção e duração, filtros por categoria e busca.
-- Aplicação transacional: a composição inteira é desfeita com um único Undo.
-
-### Exportacao
-
-- MP4.
-- GIF.
-- Resolucao 720p, 1080p e 4K.
-- FPS 24, 30 e 60.
-- Bitrate customizavel.
-- Duracao padrao usa o fim real do ultimo item visivel na timeline.
-- Audio e mix basico entram pelo pipeline FFmpeg.
+1. Crie ou abra um projeto no hub.
+2. Importe um ou vários arquivos no painel de mídia.
+3. Arraste os cards para a pista correta da timeline.
+4. Selecione um elemento e ajuste propriedades no inspetor.
+5. Ative Auto Key, mova o playhead e altere propriedades para animar.
+6. Aplique presets/templates ou edite curvas e caminhos de movimento.
+7. Escolha o formato do canvas e, se necessário, ative um preview social.
+8. Exporte em MP4 ou GIF.
 
 ## Atalhos
 
-- `Espaco`: play/pause, exceto quando estiver digitando.
-- `Ctrl+S`: salvar projeto.
-- `Ctrl+Z`: desfazer.
-- `Ctrl+Y`: refazer.
-- `Ctrl+A` com mouse na cena: seleciona tudo visivel no frame atual.
-- `Ctrl+A` com mouse na timeline: seleciona tudo da timeline.
-- `Delete` ou `Backspace`: apaga a selecao.
-- `S`: corta o clip selecionado no playhead.
+| Atalho | Ação |
+| --- | --- |
+| `Space` | Play/pause |
+| `Ctrl+S` | Salvar projeto |
+| `Ctrl+Z` / `Ctrl+Y` | Desfazer/refazer |
+| `Ctrl+D` | Duplicar camada selecionada |
+| `Ctrl+A` | Selecionar tudo na região sob o mouse |
+| `Ctrl+K` | Focar a pesquisa |
+| `Delete` / `Backspace` | Excluir seleção |
+| `S` | Cortar clip no playhead |
+| `V` | Ferramenta de seleção |
+| `B` | Lâmina |
+| `←` / `→` | Voltar/avançar um frame |
+| `Shift+←` / `Shift+→` | Voltar/avançar dez frames |
+| `Home` / `End` | Início/fim do conteúdo |
+| `J` / `K` / `L` | Navegação para trás, pausa e reprodução |
 
-Durante edicao de texto, os atalhos globais nao interceptam a digitacao.
+Atalhos globais não interceptam campos de formulário nem edição de texto no canvas.
 
-## Estrutura do app
+## Arquitetura em uma visão
 
-```text
-PyQt6 App
-├── editor/
-│   ├── main_window.py      Janela PyQt6, QWebEngineView e QWebChannel
-│   ├── bridge.py           Bridge Python <-> JS
-│   ├── exporter.py         Exportacao por FFmpeg
-│   ├── media.py            Metadata e classificacao de arquivos
-│   ├── paths.py            Pastas do app
-│   └── project.py          Normalizacao/salvamento de projeto
-├── web/
-│   ├── index.html          Layout principal e hub
-│   ├── styles.css          Visual do editor
-│   ├── vendor/
-│   │   └── three.module.js Three.js local
-│   └── js/
-│       ├── app.js          Inicializacao, hub, atalhos e idioma
-│       ├── state.js        Projeto, camadas, timeline, selecao e camera
-│       ├── canvas.js       Preview, selecao, resize e edicao de texto
-│       ├── threeText3D.js  Texto 3D
-│       ├── timeline.js     Timeline e clips
-│       ├── properties.js   Painel de propriedades
-│       ├── mediaLibrary.js Paineis da esquerda
-│       ├── animationEngine.js Keyframes, easing e camera
-│       ├── motionPathEditor.js Caminho de movimento
-│       ├── graphEditor.js  Curvas
-│       ├── textAnimator.js Animacoes de texto
-│       ├── audioEngine.js  Audio e separar audio
-│       ├── effects.js      Efeitos/filtros
-│       ├── templates.js    Templates
-│       └── exporter.js     Render frame-a-frame para Python
-├── projects/               Projetos salvos
-├── autosaves/              Autosaves
-└── exports/                Videos exportados
+```mermaid
+flowchart LR
+    UI["HTML/CSS + controllers JS"] --> Store["Store e projeto em memória"]
+    Store --> Canvas["Canvas 2D + Three.js"]
+    Store --> Timeline["Timeline e inspetor"]
+    UI <-->|"QWebChannel / JSON"| Bridge["EditorBridge PyQt6"]
+    Bridge --> Files["Projetos e mídia local"]
+    Bridge --> FFmpeg["Exportação e processamento"]
+    PyQt["QMainWindow / QWebEngine"] --> UI
+    PyQt --> Popups["Painéis destacáveis"]
 ```
 
-## Formato do projeto
+O frontend usa scripts IIFE carregados em ordem e publica módulos no namespace global `window.Editor`. O `Store` é a fonte de verdade do projeto; controllers reagem a razões de mudança como `time`, `layer:add` ou `timeline:drag-live`. O backend Python é acessado somente pelo adapter `Editor.Bridge`.
 
-Projetos sao JSON `.lumi.json`. Cada projeto guarda:
+## Estrutura do repositório
 
-- Configuracoes de resolucao, FPS, duracao e fundo.
-- Biblioteca de midia.
-- Camadas.
-- Clips/timeline.
-- Keyframes por camada.
-- Camera global e keyframes de camera.
-- Presets personalizados.
-- Marcadores de beat.
+```text
+Lumi-motion/
+├── app.py                    Entrada da aplicação desktop
+├── index.html                Landing page estática
+├── editor/
+│   ├── main_window.py        Janela, WebEngine, QWebChannel, drop e popups
+│   ├── bridge.py             API Python exposta ao JavaScript
+│   ├── exporter.py           Sessões de frames e comandos FFmpeg
+│   ├── media.py              Classificação e metadata de mídia
+│   ├── project.py            Defaults, normalização e persistência JSON
+│   └── paths.py              Diretórios de projeto/export/temp
+├── web/
+│   ├── index.html            Shell do editor e ordem dos scripts
+│   ├── styles.css            Tokens, layout e estados visuais
+│   ├── vendor/three.module.js
+│   └── js/                   Store e controllers do frontend
+├── docs/                     Documentação técnica detalhada
+├── projects/                 Criado em runtime
+├── autosaves/                Criado em runtime
+├── exports/                  Criado em runtime
+└── .tmp/                     Criado em runtime
+```
 
-## Observacoes
+## Documentação de engenharia
 
-- A UI nao depende de internet.
-- Three.js fica local em `web/vendor/`.
-- FFmpeg precisa estar instalado/localizado para exportar video final e separar audio.
+- [Índice técnico](docs/README.md)
+- [Arquitetura e fluxo de dados](docs/ARCHITECTURE.md)
+- [Formato `.lumi.json`](docs/PROJECT_FORMAT.md)
+- [Estado, eventos, transações e Undo](docs/STATE_AND_COMMANDS.md)
+
+## Limitações conhecidas
+
+- A exportação de composição gera PNGs no frontend e envia cada frame pelo QWebChannel; é correta para o modelo atual, mas cara em 4K/60 e ainda não tem worker/cancelamento completo no backend.
+- Comandos FFmpeg finais são síncronos no processo Python; uma exportação pesada pode reduzir a responsividade da janela.
+- O sistema de módulos é baseado em scripts globais/IIFE, sem bundler ou checagem estática de tipos.
+- Não há suíte automatizada versionada no estado atual do repositório.
+- Arquivos de projeto guardam caminhos locais absolutos e ainda não possuem relink/proxy portátil.
+- O popout multi-monitor depende do suporte de janelas do QWebEngine e deve ser testado nos drivers/monitores do ambiente de entrega.
+- A mudança de proporção altera o canvas, mas não reposiciona automaticamente composições antigas.
+
+## Licença
+
+Consulte [LICENSE](LICENSE).
